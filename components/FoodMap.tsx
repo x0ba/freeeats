@@ -63,87 +63,109 @@ const dietaryTagConfig: Record<DietaryTag, { icon: string; label: string }> = {
 };
 
 
-
+// Paper note style marker with pushpin
 function createFoodMarker(foodType: FoodType, isExpiringSoon: boolean, isFavorite: boolean, matchesDiet: boolean): DivIcon {
   const emoji = foodEmojis[foodType];
   const pulseClass = isExpiringSoon ? "animate-pulse" : "";
-  
-  // Emerald for diet match, Gold for favorite, Coral for regular
-  let bgGradient = "linear-gradient(135deg, #FF6B6B, #FF8E8E)";
-  let shadowColor = "rgba(255, 107, 107, 0.4)";
-  
+
+  // Colors based on status
+  let borderColor = "#E8DCC5"; // Default cream border
+  let pinColor = "#C4532E"; // Terracotta pin
+
   if (matchesDiet) {
-    bgGradient = "linear-gradient(135deg, #10B981, #34D399)"; // Emerald
-    shadowColor = "rgba(16, 185, 129, 0.5)";
+    borderColor = "#2D5A4A"; // Forest green
+    pinColor = "#2D5A4A";
   } else if (isFavorite) {
-    bgGradient = "linear-gradient(135deg, #F59E0B, #FBBF24)"; // Amber
-    shadowColor = "rgba(245, 158, 11, 0.5)";
+    borderColor = "#E8A838"; // Amber
+    pinColor = "#E8A838";
   }
 
-  const favoriteHeart = isFavorite 
+  const favoriteHeart = isFavorite
     ? `<div style="
         position: absolute;
-        top: -8px;
-        right: -8px;
-        width: 20px;
-        height: 20px;
-        background: linear-gradient(135deg, #FF6B6B, #F59E0B);
+        bottom: -4px;
+        right: -4px;
+        width: 16px;
+        height: 16px;
+        background: linear-gradient(135deg, #E8A838, #C98A20);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 10px;
-        border: 2px solid white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        transform: rotate(45deg);
+        font-size: 8px;
+        border: 2px solid #FFFDF9;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         z-index: 10;
-      "><span style="transform: rotate(-45deg);">❤️</span></div>`
+      ">❤️</div>`
     : "";
-    
-  const dietBatch = matchesDiet
+
+  const dietBadge = matchesDiet
     ? `<div style="
         position: absolute;
-        top: -8px;
-        left: -8px;
-        width: 20px;
-        height: 20px;
-        background: linear-gradient(135deg, #10B981, #059669);
+        bottom: -4px;
+        left: -4px;
+        width: 16px;
+        height: 16px;
+        background: linear-gradient(135deg, #2D5A4A, #1E4535);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 10px;
-        border: 2px solid white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        transform: rotate(45deg);
+        font-size: 8px;
+        border: 2px solid #FFFDF9;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
         z-index: 10;
-      "><span style="transform: rotate(-45deg);">✓</span></div>`
+        color: white;
+      ">✓</div>`
     : "";
-  
+
   return new DivIcon({
     html: `
       <div class="food-marker ${pulseClass}" style="
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        background: ${bgGradient};
-        border-radius: 50% 50% 50% 0;
-        transform: rotate(-45deg);
-        box-shadow: 0 4px 12px ${shadowColor};
-        border: 3px solid white;
         position: relative;
+        width: 44px;
+        height: 52px;
       ">
-        <span style="transform: rotate(45deg);">${emoji}</span>
-        ${favoriteHeart}
-        ${dietBatch}
+        <!-- Pushpin -->
+        <div style="
+          position: absolute;
+          top: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 12px;
+          height: 12px;
+          background: linear-gradient(135deg, ${pinColor}, ${pinColor}dd);
+          border-radius: 50%;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3), inset 0 -1px 2px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.3);
+          border: 2px solid #FFFDF9;
+          z-index: 11;
+        "></div>
+        <!-- Paper note -->
+        <div style="
+          position: absolute;
+          top: 10px;
+          left: 0;
+          width: 44px;
+          height: 42px;
+          background: #FFFDF9;
+          border: 2px solid ${borderColor};
+          border-radius: 2px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.05);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+          transform: rotate(-2deg);
+        ">
+          ${emoji}
+          ${favoriteHeart}
+          ${dietBadge}
+        </div>
       </div>
     `,
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40],
+    iconSize: [44, 52],
+    iconAnchor: [22, 52],
+    popupAnchor: [0, -48],
     className: "food-marker-container",
   });
 }
@@ -162,17 +184,17 @@ function createUserLocationMarker(): DivIcon {
         <div style="
           width: 24px;
           height: 24px;
-          background: #3B82F6;
+          background: #2D5A4A;
           border-radius: 50%;
-          border: 3px solid white;
-          box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
+          border: 3px solid #FFFDF9;
+          box-shadow: 0 2px 8px rgba(45, 90, 74, 0.5);
           animation: userPulse 2s infinite;
         "></div>
         <div style="
           position: absolute;
           width: 48px;
           height: 48px;
-          background: rgba(59, 130, 246, 0.2);
+          background: rgba(45, 90, 74, 0.2);
           border-radius: 50%;
           animation: userPulseRing 2s infinite;
         "></div>
@@ -208,11 +230,11 @@ function formatTimeRemaining(ms: number): string {
 // Component to recenter map when center changes
 function MapRecenter({ center }: { center: [number, number] }) {
   const map = useMap();
-  
+
   useEffect(() => {
     map.setView(center, map.getZoom());
   }, [center, map]);
-  
+
   return null;
 }
 
@@ -234,20 +256,20 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
     const checkTheme = () => {
       setIsDarkMode(document.documentElement.classList.contains("dark"));
     };
-    
+
     // Initial check
     checkTheme();
-    
+
     // Watch for class changes on html element
     const observer = new MutationObserver(checkTheme);
     observer.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["class"],
     });
-    
+
     return () => observer.disconnect();
   }, []);
-  
+
   // Get user's location
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -282,7 +304,7 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
     return posts.map((post) => {
       const isExpiringSoon = post.timeRemaining < 1800000; // 30 minutes
       const postIsFavorite = isFavorite(post.foodType);
-      
+
       let matchesDiet = false;
       if (dietaryRestrictions && dietaryRestrictions.length > 0) {
         // Post must contain ALL of the user's restrictions
@@ -303,12 +325,12 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
     : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
 
   return (
-    <div className={`relative overflow-hidden rounded-xl ${className}`}>
+    <div className={`relative overflow-hidden ${className}`}>
       <MapContainer
         center={center}
         zoom={zoom}
         className="h-full w-full"
-        style={{ background: isDarkMode ? "#1a1a2e" : "#f5f5f0" }}
+        style={{ background: isDarkMode ? "#1F1A13" : "#FFF8F0" }}
       >
         <TileLayer
           key={isDarkMode ? "dark" : "light"}
@@ -316,7 +338,7 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
           url={tileUrl}
         />
         <MapRecenter center={center} />
-        
+
         {/* User location marker with accuracy circle */}
         {userLocation && (
           <>
@@ -324,8 +346,8 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
               center={[userLocation.lat, userLocation.lng]}
               radius={userLocation.accuracy}
               pathOptions={{
-                color: "#3B82F6",
-                fillColor: "#3B82F6",
+                color: "#2D5A4A",
+                fillColor: "#2D5A4A",
                 fillOpacity: 0.1,
                 weight: 1,
               }}
@@ -337,7 +359,7 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
             >
               <Popup className="user-popup">
                 <div className="p-1 text-center">
-                  <p className="font-outfit font-semibold">You are here</p>
+                  <p className="font-display font-semibold">You are here</p>
                   <p className="text-xs text-muted-foreground">
                     Accuracy: ±{Math.round(userLocation.accuracy)}m
                   </p>
@@ -346,14 +368,14 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
             </Marker>
           </>
         )}
-        
+
         {markers.map(({ post, marker, isFavorite: postIsFavorite, matchesDiet }) => (
           <Marker
             key={post._id}
             position={[post.latitude, post.longitude]}
             icon={marker}
             eventHandlers={{
-              click: () => onMarkerClick?.(post), // Pass match info? No, click handler takes post
+              click: () => onMarkerClick?.(post),
             }}
           >
             <Popup className="food-popup">
@@ -362,19 +384,19 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
                   <img
                     src={post.imageUrl}
                     alt={post.title}
-                    className="mb-2 h-24 w-full rounded-lg object-cover"
+                    className="mb-2 h-24 w-full rounded-sm object-cover border border-border"
                   />
                 )}
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-outfit text-base font-semibold">{post.title}</h3>
+                  <h3 className="font-display text-base font-semibold">{post.title}</h3>
                   <div className="flex flex-col gap-1 items-end">
                     {matchesDiet && (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-sm bg-forest-500 px-2 py-0.5 text-[10px] font-semibold text-white">
                         ✓ Match
                       </span>
                     )}
                     {postIsFavorite && (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-coral-500 to-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-sm bg-amber-500 px-2 py-0.5 text-[10px] font-semibold text-charcoal-900">
                         <Heart className="h-2.5 w-2.5 fill-current" />
                         Fave
                       </span>
@@ -387,13 +409,12 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
                 </div>
                 <div className="mt-2">
                   <Badge
-                    variant="secondary"
-                    className={`text-xs ${
+                    className={`text-xs rounded-sm border ${
                       post.timeRemaining <= 0
-                        ? "bg-red-500/20 text-red-500"
+                        ? "bg-destructive/90 text-white border-destructive"
                         : post.timeRemaining < 1800000
-                          ? "bg-amber-500/20 text-amber-500"
-                          : "bg-green-500/20 text-green-500"
+                          ? "bg-amber-500 text-charcoal-900 border-amber-600"
+                          : "bg-forest-500 text-white border-forest-600"
                     }`}
                   >
                     <Clock className="mr-1 h-3 w-3" />
@@ -405,8 +426,7 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
                     {post.dietaryTags.map((tag) => (
                       <Badge
                         key={tag}
-                        variant="secondary"
-                        className="bg-coral-500/10 text-coral-600 text-xs"
+                        className="bg-secondary text-secondary-foreground text-xs rounded-sm border border-border"
                         title={dietaryTagConfig[tag].label}
                       >
                         <span className="mr-0.5">{dietaryTagConfig[tag].icon}</span>
@@ -420,7 +440,7 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
           </Marker>
         ))}
       </MapContainer>
-      
+
       {/* Map overlay gradient */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background to-transparent" />
     </div>

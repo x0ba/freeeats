@@ -18,6 +18,24 @@ const badgeVariants = cva(
           "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         link: "text-primary underline-offset-4 [a&]:hover:underline",
+        // Bulletin Board Theme Variants
+        sticker:
+          "sticker-badge bg-primary text-primary-foreground shadow-md [a&]:hover:bg-primary/90",
+        stamp:
+          "stamp-badge text-primary bg-transparent border-2 border-current",
+        tag: "tag-badge bg-primary text-primary-foreground",
+        ribbon:
+          "bg-amber-500 text-charcoal-900 font-semibold px-3 rounded-none -rotate-2 shadow-md",
+        // Status badges
+        fresh:
+          "bg-forest-500 text-white shadow-sm",
+        warm:
+          "bg-amber-500 text-charcoal-900 shadow-sm",
+        expiring:
+          "bg-destructive/90 text-white shadow-sm",
+        // Food type badges
+        food:
+          "bg-secondary border border-border text-secondary-foreground",
       },
     },
     defaultVariants: {

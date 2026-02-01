@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -83,17 +83,18 @@ interface FoodCardProps {
   onClick?: () => void;
   isFavorite?: boolean;
   matchesDiet?: boolean;
+  index?: number;
 }
 
-const foodTypeConfig: Record<FoodType, { icon: typeof Pizza; color: string; label: string }> = {
-  pizza: { icon: Pizza, color: "bg-orange-500/10 text-orange-600", label: "Pizza" },
-  sandwiches: { icon: Sandwich, color: "bg-amber-500/10 text-amber-600", label: "Sandwiches" },
-  snacks: { icon: Cookie, color: "bg-yellow-500/10 text-yellow-600", label: "Snacks" },
-  drinks: { icon: Coffee, color: "bg-blue-500/10 text-blue-600", label: "Drinks" },
-  desserts: { icon: Cookie, color: "bg-pink-500/10 text-pink-600", label: "Desserts" },
-  asian: { icon: UtensilsCrossed, color: "bg-red-500/10 text-red-600", label: "Asian" },
-  mexican: { icon: Salad, color: "bg-green-500/10 text-green-600", label: "Mexican" },
-  other: { icon: UtensilsCrossed, color: "bg-gray-500/10 text-gray-600", label: "Other" },
+const foodTypeConfig: Record<FoodType, { icon: typeof Pizza; color: string; label: string; emoji: string }> = {
+  pizza: { icon: Pizza, color: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30", label: "Pizza", emoji: "🍕" },
+  sandwiches: { icon: Sandwich, color: "bg-amber-600/15 text-amber-700 dark:text-amber-400 border-amber-600/30", label: "Sandwiches", emoji: "🥪" },
+  snacks: { icon: Cookie, color: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30", label: "Snacks", emoji: "🍿" },
+  drinks: { icon: Coffee, color: "bg-forest-500/15 text-forest-700 dark:text-forest-400 border-forest-500/30", label: "Drinks", emoji: "☕" },
+  desserts: { icon: Cookie, color: "bg-primary/15 text-primary border-primary/30", label: "Desserts", emoji: "🍰" },
+  asian: { icon: UtensilsCrossed, color: "bg-primary/15 text-primary border-primary/30", label: "Asian", emoji: "🍜" },
+  mexican: { icon: Salad, color: "bg-forest-500/15 text-forest-700 dark:text-forest-400 border-forest-500/30", label: "Mexican", emoji: "🌮" },
+  other: { icon: UtensilsCrossed, color: "bg-secondary text-secondary-foreground border-border", label: "Other", emoji: "🍽️" },
 };
 
 const dietaryTagConfig: Record<DietaryTag, { icon: string; label: string }> = {
@@ -126,17 +127,24 @@ function formatTimeAgo(timestamp: number): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = false }: FoodCardProps) {
+// Generate consistent rotation based on post ID
+function getRotationClass(id: string): string {
+  const rotations = ['paper-rotate-1', 'paper-rotate-2', 'paper-rotate-3', 'paper-rotate-4', 'paper-rotate-5', 'paper-rotate-6'];
+  const hash = id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return rotations[hash % rotations.length];
+}
+
+export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = false, index = 0 }: FoodCardProps) {
   const [timeRemaining, setTimeRemaining] = useState(post.timeRemaining);
   const [isMarkingGone, setIsMarkingGone] = useState(false);
-  
+
   // Review dialog state - must be declared before useQuery that depends on it
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
-  
+
   // Review image upload state
   const [reviewImageFile, setReviewImageFile] = useState<File | null>(null);
   const [reviewImagePreview, setReviewImagePreview] = useState<string | null>(null);
@@ -172,7 +180,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
   const generateReviewUploadUrl = useMutation(api.reviews.generateUploadUrl);
   const updatePost = useMutation(api.food.update);
   const generateUploadUrl = useMutation(api.food.generateUploadUrl);
-  
+
   // Queries
   const currentUser = useQuery(api.users.getCurrent);
   const userReview = useQuery(api.reviews.getUserReview, { foodPostId: post._id });
@@ -181,13 +189,16 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
     api.reviews.getForFoodPost,
     reviewDialogOpen ? { foodPostId: post._id } : "skip"
   );
-  
+
   // Check if the current user is the creator
   const isCreator = currentUser?._id === post.createdBy;
-  
+
   // Check if the current user has already reported this post
   const hasReported = currentUser ? post.reportedBy.includes(currentUser._id) : false;
-  
+
+  // Get consistent rotation class for this card
+  const rotationClass = useMemo(() => getRotationClass(post._id), [post._id]);
+
   // Initialize review form when user's existing review loads
   useEffect(() => {
     if (userReview) {
@@ -212,7 +223,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
         setShowAddressSuggestions(false);
         return;
       }
-      
+
       setIsSearchingAddress(true);
       try {
         // Search near the current post location for more relevant results
@@ -237,7 +248,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
         setIsSearchingAddress(false);
       }
     };
-    
+
     searchAddress();
   }, [debouncedAddressQuery, post.latitude, post.longitude]);
 
@@ -252,8 +263,8 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
   };
 
   const config = foodTypeConfig[post.foodType];
-  const FoodIcon = config.icon;
   const isExpired = timeRemaining <= 0;
+  const isExpiringSoon = timeRemaining < 1800000 && timeRemaining > 0;
 
   const handleMarkGone = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -326,11 +337,11 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
       toast.error("Please select a rating");
       return;
     }
-    
+
     setIsSubmittingReview(true);
     try {
       let imageId: Id<"_storage"> | undefined = existingReviewImageId ?? undefined;
-      
+
       // Upload new image if selected
       if (reviewImageFile) {
         const uploadUrl = await generateReviewUploadUrl();
@@ -342,7 +353,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
         const { storageId } = await result.json();
         imageId = storageId;
       }
-      
+
       await addReview({
         foodPostId: post._id,
         rating: reviewRating,
@@ -350,7 +361,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
         imageId,
       });
       toast.success(userReview ? "Review updated!" : "Review submitted!");
-      
+
       // Reset image state
       setReviewImageFile(null);
       setReviewImagePreview(null);
@@ -468,14 +479,19 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
   return (
     <Card
       onClick={onClick}
-      className={`group cursor-pointer overflow-hidden backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
-        matchesDiet 
-          ? "border-emerald-500 bg-emerald-500/5 shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 ring-1 ring-emerald-500/30" 
-          : "border-border/50 bg-card/50 hover:shadow-coral-500/5"
+      variant="paper"
+      className={`group cursor-pointer overflow-hidden transition-all duration-300 hover:-translate-y-1 paper-shadow-hover ${rotationClass} ${
+        matchesDiet
+          ? "border-forest-500 ring-2 ring-forest-500/20"
+          : "border-border"
       } ${isExpired ? "opacity-60" : ""}`}
+      style={{ '--stagger-index': index } as React.CSSProperties}
     >
+      {/* Pushpin decoration */}
+      <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-gradient-to-br from-primary to-terracotta-700 shadow-md border-2 border-primary-foreground z-10" />
+
       {/* Image */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-secondary to-muted">
+      <div className="relative aspect-[4/3] overflow-hidden bg-secondary mt-2 mx-3 rounded-sm border border-border">
         {post.imageUrl ? (
           <img
             src={post.imageUrl}
@@ -483,21 +499,20 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full items-center justify-center">
-            <FoodIcon className="h-16 w-16 text-muted-foreground/30" />
+          <div className="flex h-full items-center justify-center bg-gradient-to-br from-secondary to-muted">
+            <span className="text-5xl opacity-50">{config.emoji}</span>
           </div>
         )}
-        
-        {/* Time Badge */}
+
+        {/* Time Badge - Stamp style */}
         <div className="absolute right-2 top-2">
           <Badge
-            variant="secondary"
-            className={`gap-1 font-medium ${
+            className={`gap-1 font-bold text-[10px] uppercase tracking-wider px-2 py-1 rounded-sm border-2 ${
               isExpired
-                ? "bg-red-500/90 text-white"
-                : timeRemaining < 1800000
-                  ? "bg-amber-500/90 text-white"
-                  : "bg-green-500/90 text-white"
+                ? "bg-destructive/90 text-white border-destructive"
+                : isExpiringSoon
+                  ? "bg-amber-500 text-charcoal-900 border-amber-600"
+                  : "bg-forest-500 text-white border-forest-600"
             }`}
           >
             <Clock className="h-3 w-3" />
@@ -507,39 +522,39 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
 
         {/* Food Type Badge */}
         <div className="absolute left-2 top-2 flex flex-col gap-1">
-          <Badge className={`${config.color} gap-1`}>
-            <FoodIcon className="h-3 w-3" />
+          <Badge className={`${config.color} gap-1 border rounded-sm text-xs`}>
+            <span>{config.emoji}</span>
             {config.label}
           </Badge>
           {matchesDiet && (
-            <Badge className="gap-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25 border-none">
+            <Badge className="gap-1 bg-forest-500 text-white border-forest-600 rounded-sm text-xs">
               <CheckCircle2 className="h-3 w-3" />
               Match
             </Badge>
           )}
           {isFavorite && (
-            <Badge className="gap-1 bg-gradient-to-r from-coral-500 to-amber-500 text-white shadow-lg shadow-coral-500/25">
+            <Badge className="gap-1 bg-amber-500 text-charcoal-900 border-amber-600 rounded-sm text-xs">
               <Heart className="h-3 w-3 fill-current" />
-              Favorite
+              Fave
             </Badge>
           )}
         </div>
       </div>
 
-      <CardContent className="p-4">
+      <CardContent className="p-4 pt-3">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-outfit text-lg font-semibold tracking-tight line-clamp-1">
+          <h3 className="font-display text-lg font-semibold tracking-tight line-clamp-1">
             {post.title}
           </h3>
           {/* Rating Display - clickable for everyone to view reviews */}
           <button
             onClick={handleOpenReviewDialog}
-            className="flex shrink-0 items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs transition-colors hover:bg-amber-500/20"
+            className="flex shrink-0 items-center gap-1 rounded-sm bg-amber-500/10 px-2 py-0.5 text-xs transition-colors hover:bg-amber-500/20 border border-amber-500/20"
           >
-            <Star className={`h-3 w-3 ${(post.averageRating ?? 0) > 0 ? "fill-amber-400 text-amber-400" : "text-amber-400"}`} />
-            <span className="font-medium text-amber-600">
-              {(post.averageRating ?? 0) > 0 
-                ? post.averageRating?.toFixed(1) 
+            <Star className={`h-3 w-3 ${(post.averageRating ?? 0) > 0 ? "fill-amber-500 text-amber-500" : "text-amber-500"}`} />
+            <span className="font-medium text-amber-700 dark:text-amber-400">
+              {(post.averageRating ?? 0) > 0
+                ? post.averageRating?.toFixed(1)
                 : isCreator ? "Reviews" : "Rate"}
             </span>
             {(post.reviewCount ?? 0) > 0 && (
@@ -557,7 +572,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
             {post.dietaryTags.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex items-center gap-0.5 rounded-full bg-coral-500/10 px-2 py-0.5 text-xs text-coral-600"
+                className="inline-flex items-center gap-0.5 rounded-sm bg-secondary px-2 py-0.5 text-xs border border-border"
                 title={dietaryTagConfig[tag].label}
               >
                 <span>{dietaryTagConfig[tag].icon}</span>
@@ -567,16 +582,16 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
           </div>
         )}
         <div className="mt-3 flex items-center gap-1.5 text-sm text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5 text-coral-500" />
+          <MapPin className="h-3.5 w-3.5 text-primary" />
           <span className="line-clamp-1">{post.locationName}</span>
         </div>
       </CardContent>
 
-      <CardFooter className="flex items-center justify-between border-t border-border/50 p-4">
+      <CardFooter className="flex items-center justify-between border-t-2 border-dashed border-border p-4">
         <div className="flex items-center gap-2">
-          <Avatar className="h-6 w-6">
+          <Avatar className="h-6 w-6 rounded-sm border border-border">
             <AvatarImage src={post.creator?.imageUrl} />
-            <AvatarFallback className="text-xs">
+            <AvatarFallback className="text-xs rounded-sm">
               {post.creator?.name?.[0]?.toUpperCase() ?? "?"}
             </AvatarFallback>
           </Avatar>
@@ -587,9 +602,9 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
         {isCreator ? (
           <div className="flex items-center gap-2">
             {post.goneReports > 0 && (
-              <div className="flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-1 text-[10px] text-amber-600">
+              <div className="flex items-center gap-1 rounded-sm bg-amber-500/20 px-2 py-1 text-[10px] text-amber-700 dark:text-amber-400 border border-amber-500/30">
                 <Flag className="h-3 w-3" />
-                <span>{post.goneReports} {post.goneReports === 1 ? "report" : "reports"}</span>
+                <span>{post.goneReports}</span>
               </div>
             )}
             <Button
@@ -597,7 +612,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
               size="sm"
               onClick={handleOpenEditDialog}
               disabled={isExpired}
-              className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-coral-500"
+              className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-primary rounded-sm"
             >
               <Pencil className="h-3.5 w-3.5" />
               Edit
@@ -607,7 +622,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
               size="sm"
               onClick={handleMarkGone}
               disabled={isMarkingGone || isExpired}
-              className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-destructive"
+              className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-destructive rounded-sm"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Delete
@@ -619,17 +634,17 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
             size="sm"
             onClick={handleReportGone}
             disabled={isMarkingGone || isExpired || !currentUser}
-            className={`h-8 gap-1.5 text-xs ${
+            className={`h-8 gap-1.5 text-xs rounded-sm ${
               hasReported
-                ? "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700"
+                ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
                 : "text-muted-foreground hover:text-amber-600"
             }`}
           >
             <Flag className={`h-3.5 w-3.5 ${hasReported ? "fill-amber-500" : ""}`} />
             {hasReported ? "Reported" : "Report Gone"}
             {post.goneReports > 0 && (
-              <span className={`ml-1 rounded-full px-1.5 text-[10px] ${
-                hasReported ? "bg-amber-500/20 text-amber-600" : "bg-amber-500/20 text-amber-600"
+              <span className={`ml-1 rounded-sm px-1.5 text-[10px] ${
+                hasReported ? "bg-amber-500/20" : "bg-amber-500/20"
               }`}>
                 {post.goneReports}
               </span>
@@ -640,17 +655,17 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
 
       {/* Review Dialog */}
       <ResponsiveDialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
-        <ResponsiveDialogContent className="sm:max-w-lg max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <ResponsiveDialogContent className="sm:max-w-lg max-h-[85vh] overflow-hidden flex flex-col border-2 rounded-sm" onClick={(e) => e.stopPropagation()}>
           <ResponsiveDialogHeader>
-            <ResponsiveDialogTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-coral-500" />
+            <ResponsiveDialogTitle className="flex items-center gap-2 font-display">
+              <MessageSquare className="h-5 w-5 text-primary" />
               {isCreator ? "Reviews" : userReview ? "Edit Your Review" : "Rate This Food"}
             </ResponsiveDialogTitle>
             <ResponsiveDialogDescription>
               {post.title}
               {(post.reviewCount ?? 0) > 0 && (
                 <span className="ml-2 inline-flex items-center gap-1">
-                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                  <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
                   {post.averageRating?.toFixed(1)} ({post.reviewCount} {post.reviewCount === 1 ? "review" : "reviews"})
                 </span>
               )}
@@ -662,7 +677,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
             {!isCreator && currentUser && (
               <>
                 {/* Star Rating */}
-                <div className="flex flex-col items-center gap-2 pb-4 border-b">
+                <div className="flex flex-col items-center gap-2 pb-4 border-b-2 border-dashed">
                   <span className="text-sm font-medium">How was it?</span>
                   <div className="flex gap-1">
                     {[1, 2, 3, 4, 5].map((star) => (
@@ -677,7 +692,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                         <Star
                           className={`h-8 w-8 transition-colors ${
                             star <= (hoverRating || reviewRating)
-                              ? "fill-amber-400 text-amber-400"
+                              ? "fill-amber-500 text-amber-500"
                               : "text-muted-foreground/30"
                           }`}
                         />
@@ -701,7 +716,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                     placeholder="Share your experience..."
                     value={reviewComment}
                     onChange={(e) => setReviewComment(e.target.value)}
-                    className="min-h-[80px] resize-none"
+                    className="min-h-[80px] resize-none rounded-sm border-2"
                   />
                 </div>
 
@@ -712,7 +727,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                     // Compute the image URL to display
                     const existingImageUrl = allReviews?.find(r => r.userId === currentUser?._id)?.imageUrl;
                     const displayImageUrl = reviewImagePreview || existingImageUrl;
-                    
+
                     if (displayImageUrl || existingReviewImageId) {
                       return (
                         <div className="relative inline-block">
@@ -720,11 +735,11 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                             <img
                               src={displayImageUrl}
                               alt="Review"
-                              className="h-24 w-24 rounded-lg object-cover"
+                              className="h-24 w-24 rounded-sm object-cover border-2 border-border"
                             />
                           )}
                           {!displayImageUrl && existingReviewImageId && (
-                            <div className="h-24 w-24 rounded-lg bg-muted flex items-center justify-center">
+                            <div className="h-24 w-24 rounded-sm bg-muted flex items-center justify-center border-2 border-border">
                               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                             </div>
                           )}
@@ -753,7 +768,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                           variant="outline"
                           size="sm"
                           onClick={() => reviewImageInputRef.current?.click()}
-                          className="gap-2"
+                          className="gap-2 rounded-sm"
                         >
                           <ImagePlus className="h-4 w-4" />
                           Add Photo
@@ -764,11 +779,11 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                 </div>
 
                 {/* Submit Button */}
-                <div className="pt-2 border-t">
+                <div className="pt-2 border-t-2">
                   <Button
                     onClick={handleSubmitReview}
                     disabled={reviewRating === 0 || isSubmittingReview}
-                    className="w-full gap-2 bg-gradient-to-r from-coral-500 to-coral-600 text-white"
+                    className="w-full gap-2 bg-primary text-primary-foreground rounded-sm"
                   >
                     {isSubmittingReview ? (
                       <>
@@ -788,7 +803,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
 
             {/* Sign in prompt for non-logged-in users */}
             {!currentUser && !isCreator && (
-              <div className="text-center py-4 border-b">
+              <div className="text-center py-4 border-b-2 border-dashed">
                 <p className="text-sm text-muted-foreground">
                   Sign in to leave a review
                 </p>
@@ -797,7 +812,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
 
             {/* All Reviews List */}
             <div className="space-y-3">
-              <h4 className="text-sm font-medium flex items-center gap-2">
+              <h4 className="text-sm font-medium flex items-center gap-2 font-display">
                 <MessageSquare className="h-4 w-4" />
                 All Reviews
               </h4>
@@ -806,13 +821,13 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                   {allReviews.map((review) => (
                     <div
                       key={review._id}
-                      className="rounded-lg border bg-muted/30 p-3 space-y-2"
+                      className="rounded-sm border-2 bg-secondary/50 p-3 space-y-2"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6">
+                          <Avatar className="h-6 w-6 rounded-sm">
                             <AvatarImage src={review.user.imageUrl ?? undefined} />
-                            <AvatarFallback className="text-xs">
+                            <AvatarFallback className="text-xs rounded-sm">
                               {review.user.name?.[0]?.toUpperCase() ?? "?"}
                             </AvatarFallback>
                           </Avatar>
@@ -824,7 +839,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                               key={star}
                               className={`h-3 w-3 ${
                                 star <= review.rating
-                                  ? "fill-amber-400 text-amber-400"
+                                  ? "fill-amber-500 text-amber-500"
                                   : "text-muted-foreground/30"
                               }`}
                             />
@@ -840,7 +855,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                         <img
                           src={review.imageUrl}
                           alt="Review photo"
-                          className="mt-2 h-32 w-auto rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                          className="mt-2 h-32 w-auto rounded-sm object-cover cursor-pointer hover:opacity-90 transition-opacity border border-border"
                           onClick={() => window.open(review.imageUrl as string, "_blank")}
                         />
                       )}
@@ -859,7 +874,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
             <Button
               variant="outline"
               onClick={() => setReviewDialogOpen(false)}
-              className="w-full"
+              className="w-full rounded-sm"
             >
               Close
             </Button>
@@ -869,10 +884,10 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
 
       {/* Edit Post Dialog */}
       <ResponsiveDialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <ResponsiveDialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <ResponsiveDialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto border-2 rounded-sm" onClick={(e) => e.stopPropagation()}>
           <ResponsiveDialogHeader>
-            <ResponsiveDialogTitle className="flex items-center gap-2">
-              <Pencil className="h-5 w-5 text-coral-500" />
+            <ResponsiveDialogTitle className="flex items-center gap-2 font-display">
+              <Pencil className="h-5 w-5 text-primary" />
               Edit Post
             </ResponsiveDialogTitle>
             <ResponsiveDialogDescription>
@@ -889,6 +904,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
                 placeholder="What food are you sharing?"
+                className="rounded-sm border-2"
               />
             </div>
 
@@ -900,7 +916,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
                 placeholder="Add details about the food..."
-                className="min-h-[80px] resize-none"
+                className="min-h-[80px] resize-none rounded-sm border-2"
               />
             </div>
 
@@ -908,7 +924,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
             <div className="space-y-2">
               <Label>Food Type</Label>
               <Select value={editFoodType} onValueChange={(v) => setEditFoodType(v as FoodType)}>
-                <SelectTrigger>
+                <SelectTrigger className="rounded-sm border-2">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -944,26 +960,26 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                       setShowAddressSuggestions(true);
                     }
                   }}
-                  className="pl-10 pr-10"
+                  className="pl-10 pr-10 rounded-sm border-2"
                 />
                 {isSearchingAddress && (
                   <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
                 )}
                 {selectedCoords && !isSearchingAddress && (
-                  <CheckCircle2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-green-500" />
+                  <CheckCircle2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-forest-500" />
                 )}
-                
+
                 {/* Suggestions Dropdown */}
                 {showAddressSuggestions && addressSuggestions.length > 0 && (
-                  <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border/50 bg-background shadow-lg">
+                  <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-sm border-2 border-border bg-background shadow-lg">
                     {addressSuggestions.map((suggestion) => (
                       <button
                         key={suggestion.place_id}
                         type="button"
                         onClick={() => handleSelectAddress(suggestion)}
-                        className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-secondary/50"
+                        className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-secondary"
                       >
-                        <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-coral-500" />
+                        <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
                         <span className="line-clamp-2">{suggestion.display_name}</span>
                       </button>
                     ))}
@@ -971,7 +987,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                 )}
               </div>
               {selectedCoords && (
-                <p className="flex items-center gap-1 text-xs text-green-500">
+                <p className="flex items-center gap-1 text-xs text-forest-500">
                   <CheckCircle2 className="h-3 w-3" />
                   New location: {selectedCoords.lat.toFixed(5)}, {selectedCoords.lng.toFixed(5)}
                 </p>
@@ -993,7 +1009,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                   value={editLocation}
                   onChange={(e) => setEditLocation(e.target.value)}
                   placeholder="e.g., Engineering Building Room 101"
-                  className="pl-10"
+                  className="pl-10 rounded-sm border-2"
                 />
               </div>
               <p className="text-xs text-muted-foreground">
@@ -1012,7 +1028,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                     variant={editDietaryTags.includes(tag) ? "default" : "outline"}
                     size="sm"
                     onClick={() => toggleDietaryTag(tag)}
-                    className={editDietaryTags.includes(tag) ? "bg-coral-500 hover:bg-coral-600" : ""}
+                    className={`rounded-sm ${editDietaryTags.includes(tag) ? "bg-primary" : ""}`}
                   >
                     {dietaryTagConfig[tag].icon} {dietaryTagConfig[tag].label}
                   </Button>
@@ -1028,7 +1044,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                   <img
                     src={editImagePreview}
                     alt="New photo"
-                    className="h-24 w-24 rounded-lg object-cover"
+                    className="h-24 w-24 rounded-sm object-cover border-2 border-border"
                   />
                   <button
                     type="button"
@@ -1043,7 +1059,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                   <img
                     src={post.imageUrl}
                     alt="Current photo"
-                    className="h-24 w-24 rounded-lg object-cover"
+                    className="h-24 w-24 rounded-sm object-cover border-2 border-border"
                   />
                   <p className="text-xs text-muted-foreground">Upload a new image to replace</p>
                 </div>
@@ -1062,7 +1078,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
                   variant="outline"
                   size="sm"
                   onClick={() => editImageInputRef.current?.click()}
-                  className="gap-2"
+                  className="gap-2 rounded-sm"
                 >
                   <ImagePlus className="h-4 w-4" />
                   {post.imageUrl || editImagePreview ? "Change Photo" : "Add Photo"}
@@ -1075,7 +1091,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
               <Label>Extend Availability</Label>
               <div className="flex items-center gap-2">
                 <Select value={extendMinutes.toString()} onValueChange={(v) => setExtendMinutes(parseInt(v))}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[180px] rounded-sm border-2">
                     <SelectValue placeholder="Don't extend" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1100,13 +1116,14 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
               variant="outline"
               onClick={() => setEditDialogOpen(false)}
               disabled={isUpdating}
+              className="rounded-sm"
             >
               Cancel
             </Button>
             <Button
               onClick={handleUpdatePost}
               disabled={isUpdating || !editTitle.trim() || !editLocation.trim()}
-              className="gap-2 bg-gradient-to-r from-coral-500 to-coral-600 text-white"
+              className="gap-2 bg-primary text-primary-foreground rounded-sm"
             >
               {isUpdating ? (
                 <>

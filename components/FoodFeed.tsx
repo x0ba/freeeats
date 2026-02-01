@@ -16,15 +16,15 @@ interface FoodFeedProps {
   campusId: Id<"campuses">;
 }
 
-const filterOptions: { value: FoodType | "all"; label: string; icon: typeof Pizza }[] = [
-  { value: "all", label: "All", icon: UtensilsCrossed },
-  { value: "pizza", label: "Pizza", icon: Pizza },
-  { value: "sandwiches", label: "Sandwiches", icon: Sandwich },
-  { value: "snacks", label: "Snacks", icon: Cookie },
-  { value: "drinks", label: "Drinks", icon: Coffee },
-  { value: "desserts", label: "Desserts", icon: Cookie },
-  { value: "asian", label: "Asian", icon: Salad },
-  { value: "mexican", label: "Mexican", icon: Salad },
+const filterOptions: { value: FoodType | "all"; label: string; icon: typeof Pizza; emoji: string }[] = [
+  { value: "all", label: "All", icon: UtensilsCrossed, emoji: "🍴" },
+  { value: "pizza", label: "Pizza", icon: Pizza, emoji: "🍕" },
+  { value: "sandwiches", label: "Sandwiches", icon: Sandwich, emoji: "🥪" },
+  { value: "snacks", label: "Snacks", icon: Cookie, emoji: "🍿" },
+  { value: "drinks", label: "Drinks", icon: Coffee, emoji: "☕" },
+  { value: "desserts", label: "Desserts", icon: Cookie, emoji: "🍰" },
+  { value: "asian", label: "Asian", icon: Salad, emoji: "🍜" },
+  { value: "mexican", label: "Mexican", icon: Salad, emoji: "🌮" },
 ];
 
 export function FoodFeed({ campusId }: FoodFeedProps) {
@@ -40,24 +40,26 @@ export function FoodFeed({ campusId }: FoodFeedProps) {
     return typeof rating === "number" && rating >= 4;
   };
 
-  const filteredPosts = posts?.filter((post) => 
+  const filteredPosts = posts?.filter((post) =>
     filter === "all" ? true : post.foodType === filter
   );
 
   if (posts === undefined) {
     return (
-      <div className="space-y-4 p-4">
+      <div className="space-y-6 p-4">
+        {/* Filter Pills Skeleton */}
         <div className="flex gap-2 overflow-x-auto pb-2">
           {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-8 w-24 shrink-0 rounded-full" />
+            <Skeleton key={i} className="h-9 w-24 shrink-0 rounded-sm" />
           ))}
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Masonry Skeleton */}
+        <div className="masonry-grid">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="space-y-3">
-              <Skeleton className="aspect-[4/3] rounded-xl" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-3 w-1/2" />
+            <div key={i} className="masonry-item space-y-3">
+              <Skeleton className="aspect-[4/3] rounded-sm" />
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
             </div>
           ))}
         </div>
@@ -66,63 +68,86 @@ export function FoodFeed({ campusId }: FoodFeedProps) {
   }
 
   return (
-    <div className="space-y-4 p-4">
-      {/* Filter Pills */}
+    <div className="space-y-6 p-4">
+      {/* Filter Pills - Tab style */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         {filterOptions.map((option) => {
-          const Icon = option.icon;
           const isActive = filter === option.value;
-          const count = option.value === "all" 
-            ? posts.length 
+          const count = option.value === "all"
+            ? posts.length
             : posts.filter((p) => p.foodType === option.value).length;
-          
+
           if (option.value !== "all" && count === 0) return null;
-          
+
           return (
             <Badge
               key={option.value}
               variant={isActive ? "default" : "secondary"}
               onClick={() => setFilter(option.value)}
-              className={`cursor-pointer gap-1.5 whitespace-nowrap px-3 py-1.5 transition-all ${
+              className={`cursor-pointer gap-1.5 whitespace-nowrap px-3 py-2 transition-all rounded-sm border-2 text-sm font-medium ${
                 isActive
-                  ? "bg-coral-500 text-white hover:bg-coral-600"
-                  : "bg-secondary/80 hover:bg-secondary"
+                  ? "bg-primary text-primary-foreground border-primary shadow-md"
+                  : "bg-card border-border hover:bg-secondary hover:border-primary/30"
               }`}
             >
-              <Icon className="h-3.5 w-3.5" />
+              <span>{option.emoji}</span>
               {option.label}
-              <span className="ml-0.5 opacity-70">({count})</span>
+              <span className={`ml-0.5 px-1.5 py-0.5 rounded-sm text-xs ${
+                isActive ? "bg-primary-foreground/20" : "bg-muted"
+              }`}>
+                {count}
+              </span>
             </Badge>
           );
         })}
       </div>
 
-      {/* Posts Grid */}
+      {/* Masonry Grid */}
       {filteredPosts && filteredPosts.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredPosts.map((post) => {
+        <div className="masonry-grid">
+          {filteredPosts.map((post, index) => {
             const matchesDiet = dietaryRestrictions && dietaryRestrictions.length > 0
               ? dietaryRestrictions.every(tag => post.dietaryTags?.includes(tag as DietaryTag))
               : false;
-              
+
             return (
-              <FoodCard 
-                key={post._id} 
-                post={post} 
-                isFavorite={isFavorite(post.foodType)} 
-                matchesDiet={matchesDiet}
-              />
+              <div
+                key={post._id}
+                className="masonry-item animate-stagger"
+                style={{ '--stagger-index': index } as React.CSSProperties}
+              >
+                <FoodCard
+                  post={post}
+                  isFavorite={isFavorite(post.foodType)}
+                  matchesDiet={matchesDiet}
+                  index={index}
+                />
+              </div>
             );
           })}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="mb-4 rounded-full bg-secondary p-6">
-            <Pizza className="h-12 w-12 text-muted-foreground" />
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          {/* Illustrated empty state */}
+          <div className="relative mb-6">
+            {/* Bulletin board background */}
+            <div className="w-40 h-40 rounded-sm bg-secondary border-2 border-border cork-texture flex items-center justify-center">
+              {/* Empty note card */}
+              <div className="relative w-28 h-32 bg-card rounded-sm paper-shadow paper-rotate-2 border-2 border-border flex flex-col items-center justify-center p-3">
+                {/* Pushpin */}
+                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-gradient-to-br from-primary to-terracotta-700 shadow-md border-2 border-primary-foreground" />
+                <span className="text-4xl mb-2">🍽️</span>
+                <div className="w-full h-1 bg-border/50 rounded-full mb-1" />
+                <div className="w-3/4 h-1 bg-border/50 rounded-full mb-1" />
+                <div className="w-1/2 h-1 bg-border/50 rounded-full" />
+              </div>
+            </div>
           </div>
-          <h3 className="font-outfit text-xl font-semibold">No free food right now</h3>
+          <h3 className="font-display text-2xl font-bold text-foreground">
+            No free food right now
+          </h3>
           <p className="mt-2 max-w-sm text-muted-foreground">
-            Be the first to share free food on campus! Click the &quot;Add Food&quot; button to get started.
+            Be the first to pin some free food on the board! Click the &quot;Add Food&quot; button to share with your campus.
           </p>
         </div>
       )}

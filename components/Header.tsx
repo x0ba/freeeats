@@ -37,7 +37,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { MapPin, Plus, ChevronDown, Utensils, Bell, Flag, Check, Search, Trash2, AlertTriangle, Loader2, Star } from "lucide-react";
+import { MapPin, Plus, ChevronDown, Bell, Flag, Check, Search, Trash2, AlertTriangle, Loader2, Star } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
@@ -65,7 +65,7 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
   const setCuisinePreferences = useMutation(api.users.setCuisinePreferences);
   const dietaryRestrictions = useQuery(api.users.getDietaryRestrictions, isAuthenticated ? {} : "skip");
   const setDietaryRestrictions = useMutation(api.users.setDietaryRestrictions);
-  
+
   // Use search query for campus selection (supports 380+ campuses efficiently)
   const searchedCampuses = useQuery(
     api.campuses.search,
@@ -161,19 +161,26 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b-2 border-border bg-card/95 backdrop-blur-sm">
       <div className="flex h-16 w-full items-center justify-between px-4 sm:px-6">
         {/* Logo */}
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-coral-500 to-coral-600 shadow-lg shadow-coral-500/25">
-            <Utensils className="h-5 w-5 text-white" />
+        <div className="flex items-center gap-2.5">
+          {/* Illustrated food icon */}
+          <div className="relative flex h-10 w-10 items-center justify-center">
+            <div className="absolute inset-0 rounded-lg bg-primary/10 rotate-3" />
+            <div className="relative flex h-9 w-9 items-center justify-center rounded-lg bg-primary paper-shadow">
+              <span className="text-xl">🍕</span>
+            </div>
           </div>
-          <span className="font-outfit text-xl font-bold tracking-tight">
-            Free<span className="text-coral-500">Eats</span>
-          </span>
+          <div className="flex flex-col">
+            <span className="font-display text-xl font-bold tracking-tight leading-none">
+              Free<span className="text-primary">Eats</span>
+            </span>
+            <span className="text-[10px] text-muted-foreground tracking-wide">CAMPUS FOOD FINDER</span>
+          </div>
         </div>
 
-        {/* Campus Selector - Searchable */}
+        {/* Campus Selector - Stamp Style */}
         {isAuthenticated && currentUser && (
           <Popover open={campusSearchOpen} onOpenChange={setCampusSearchOpen}>
             <PopoverTrigger asChild>
@@ -181,18 +188,18 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                 variant="outline"
                 role="combobox"
                 aria-expanded={campusSearchOpen}
-                className="gap-2 border-border/50 bg-secondary/50 hover:bg-secondary"
+                className="gap-2 border-2 border-dashed border-primary/30 bg-card hover:bg-secondary hover:border-primary/50 rounded-sm"
               >
-                <MapPin className="h-4 w-4 text-coral-500" />
-                <span className="max-w-[150px] truncate">
+                <MapPin className="h-4 w-4 text-primary" />
+                <span className="max-w-[150px] truncate font-medium">
                   {currentCampus?.name ?? "Select Campus"}
                 </span>
                 <ChevronDown className="h-4 w-4 opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[320px] p-0" align="center">
+            <PopoverContent className="w-[320px] p-0 border-2 rounded-sm" align="center">
               <Command className="bg-transparent" shouldFilter={false}>
-                <div className="relative border-b border-border/50">
+                <div className="relative border-b-2 border-border">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <CommandInput
                     placeholder="Type your university name..."
@@ -210,7 +217,7 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                         </div>
                       ) : (
                         <div className="space-y-1">
-                          <p className="text-sm font-medium">Search 380+ universities</p>
+                          <p className="text-sm font-medium font-display">Search 380+ universities</p>
                           <p className="text-xs text-muted-foreground">
                             Start typing to find your school
                           </p>
@@ -226,14 +233,14 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                         onSelect={() => handleCampusChange(campus._id)}
                         className={`cursor-pointer px-3 py-2 ${
                           currentUser?.campusId === campus._id
-                            ? "bg-coral-500/10 text-coral-500"
+                            ? "bg-primary/10 text-primary"
                             : ""
                         }`}
                       >
                         <div className="flex items-center gap-2">
                           <MapPin className={`h-4 w-4 ${
                             currentUser?.campusId === campus._id
-                              ? "text-coral-500"
+                              ? "text-primary"
                               : "text-muted-foreground"
                           }`} />
                           <div className="flex flex-col">
@@ -266,15 +273,15 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                   >
                     <Bell className="h-5 w-5" />
                     {(unreadCount ?? 0) > 0 && (
-                      <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-coral-500 text-[10px] font-medium text-white">
+                      <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-md">
                         {unreadCount}
                       </span>
                     )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
-                  <div className="flex items-center justify-between border-b px-3 py-2">
-                    <span className="font-medium">Notifications</span>
+                <DropdownMenuContent align="end" className="w-80 border-2 rounded-sm">
+                  <div className="flex items-center justify-between border-b-2 px-3 py-2">
+                    <span className="font-display font-semibold">Notifications</span>
                     {(unreadCount ?? 0) > 0 && (
                       <Button
                         variant="ghost"
@@ -298,7 +305,7 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                             }
                           }}
                           className={`flex cursor-pointer flex-col items-start gap-1 p-3 ${
-                            !notification.isRead ? "bg-coral-500/5" : ""
+                            !notification.isRead ? "bg-primary/5" : ""
                           }`}
                         >
                           <div className="flex w-full items-start gap-2">
@@ -316,7 +323,7 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                               </p>
                             </div>
                             {!notification.isRead && (
-                              <div className="h-2 w-2 shrink-0 rounded-full bg-coral-500" />
+                              <div className="h-2 w-2 shrink-0 rounded-full bg-primary" />
                             )}
                           </div>
                         </DropdownMenuItem>
@@ -330,18 +337,19 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                 </DropdownMenuContent>
               </DropdownMenu>
 
+              {/* Add Food Button */}
               <Button
                 onClick={onAddFood}
-                className="gap-2 bg-gradient-to-r from-coral-500 to-coral-600 text-white shadow-lg shadow-coral-500/25 hover:from-coral-600 hover:to-coral-700"
+                className="gap-2 bg-primary text-primary-foreground shadow-md hover:bg-primary/90 rounded-sm"
               >
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add Food</span>
+                <span className="hidden sm:inline font-medium">Add Food</span>
               </Button>
 
               <UserButton
                 appearance={{
                   elements: {
-                    avatarBox: "h-9 w-9",
+                    avatarBox: "h-9 w-9 rounded-sm border-2 border-border",
                   },
                 }}
               >
@@ -361,20 +369,20 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
 
               {/* Food Preferences Dialog */}
               <ResponsiveDialog open={preferencesDialogOpen} onOpenChange={setPreferencesDialogOpen}>
-                <ResponsiveDialogContent className="sm:max-w-2xl">
+                <ResponsiveDialogContent className="sm:max-w-2xl border-2 rounded-sm">
                   <ResponsiveDialogHeader>
-                    <ResponsiveDialogTitle>Food Preferences</ResponsiveDialogTitle>
+                    <ResponsiveDialogTitle className="font-display text-xl">Food Preferences</ResponsiveDialogTitle>
                     <ResponsiveDialogDescription>
                       Customize your feed and dietary requirements
                     </ResponsiveDialogDescription>
                   </ResponsiveDialogHeader>
 
                   <Tabs defaultValue="cuisine" className="w-full mt-4">
-                    <TabsList className="grid w-full grid-cols-2 mb-4">
-                      <TabsTrigger value="cuisine">Cuisines</TabsTrigger>
-                      <TabsTrigger value="dietary">Dietary</TabsTrigger>
+                    <TabsList className="grid w-full grid-cols-2 mb-4 rounded-sm">
+                      <TabsTrigger value="cuisine" className="rounded-sm">Cuisines</TabsTrigger>
+                      <TabsTrigger value="dietary" className="rounded-sm">Dietary</TabsTrigger>
                     </TabsList>
-                    
+
                     <TabsContent value="cuisine">
                       <div className="space-y-3 max-h-[50vh] overflow-y-auto p-2">
                         <div className="text-sm text-muted-foreground">
@@ -400,14 +408,14 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                           submitLabel="Save Restrictions"
                           isCompact={true}
                           // For preferences modal, we don't want to skip, just save
-                          showSkip={false} 
+                          showSkip={false}
                         />
                       </div>
                     </TabsContent>
                   </Tabs>
-                  
-                  <div className="mt-2 flex justify-end border-t border-border/50 pt-4">
-                    <Button variant="outline" onClick={() => setPreferencesDialogOpen(false)}>
+
+                  <div className="mt-2 flex justify-end border-t-2 border-border pt-4">
+                    <Button variant="outline" onClick={() => setPreferencesDialogOpen(false)} className="rounded-sm">
                       Done
                     </Button>
                   </div>
@@ -416,18 +424,18 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
 
               {/* Delete Account Confirmation Dialog */}
               <ResponsiveDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <ResponsiveDialogContent className="sm:max-w-md">
+                <ResponsiveDialogContent className="sm:max-w-md border-2 rounded-sm">
                   <ResponsiveDialogHeader>
                     <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
                       <AlertTriangle className="h-6 w-6 text-destructive" />
                     </div>
-                    <ResponsiveDialogTitle className="text-center">Delete Account</ResponsiveDialogTitle>
+                    <ResponsiveDialogTitle className="text-center font-display">Delete Account</ResponsiveDialogTitle>
                     <ResponsiveDialogDescription className="text-center">
                       This action cannot be undone. This will permanently delete your
                       account and remove all your data including:
                     </ResponsiveDialogDescription>
                   </ResponsiveDialogHeader>
-                  <div className="space-y-2 rounded-lg bg-muted/50 p-4 text-sm">
+                  <div className="space-y-2 rounded-sm bg-secondary p-4 text-sm border-2 border-border">
                     <p className="flex items-center gap-2">
                       <span className="text-muted-foreground">•</span>
                       All your food posts
@@ -446,6 +454,7 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                       variant="outline"
                       onClick={() => setDeleteDialogOpen(false)}
                       disabled={isDeleting}
+                      className="rounded-sm"
                     >
                       Cancel
                     </Button>
@@ -453,7 +462,7 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                       variant="destructive"
                       onClick={handleDeleteAccount}
                       disabled={isDeleting}
-                      className="gap-2"
+                      className="gap-2 rounded-sm"
                     >
                       {isDeleting ? (
                         <>
@@ -474,10 +483,10 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
           ) : (
             <div className="flex gap-2">
               <SignInButton mode="modal">
-                <Button variant="ghost">Sign In</Button>
+                <Button variant="ghost" className="rounded-sm">Sign In</Button>
               </SignInButton>
               <SignUpButton mode="modal">
-                <Button className="bg-gradient-to-r from-coral-500 to-coral-600 text-white">
+                <Button className="bg-primary text-primary-foreground shadow-md rounded-sm">
                   Sign Up
                 </Button>
               </SignUpButton>

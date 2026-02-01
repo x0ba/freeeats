@@ -19,12 +19,26 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
+        // Bulletin Board Theme Variants
+        paper:
+          "bg-card text-card-foreground border-2 border-border paper-shadow hover:paper-shadow-hover hover:-translate-y-0.5 active:translate-y-0 rounded-sm",
+        pushpin:
+          "relative bg-primary text-primary-foreground hover:bg-primary/90 before:content-[''] before:absolute before:-top-1.5 before:left-1/2 before:-translate-x-1/2 before:w-3 before:h-3 before:bg-gradient-to-br before:from-amber-400 before:to-amber-600 before:rounded-full before:shadow-md",
+        tab:
+          "bg-secondary text-secondary-foreground border-t-2 border-l-2 border-r-2 border-border rounded-t-md rounded-b-none -mb-px hover:bg-secondary/80 data-[state=active]:bg-card data-[state=active]:border-b-card",
+        stamp:
+          "stamp-badge text-primary bg-transparent hover:bg-primary/5",
+        forest:
+          "bg-accent text-accent-foreground hover:bg-forest-600",
+        amber:
+          "bg-amber-500 text-charcoal-900 hover:bg-amber-600 shadow-md",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",
         xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
         sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
         lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
+        xl: "h-12 rounded-md px-8 text-base has-[>svg]:px-6",
         icon: "size-9",
         "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
         "icon-sm": "size-8",
