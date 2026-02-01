@@ -10,8 +10,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MapPin, Plus, ChevronDown, Utensils, Bell, Flag, Check } from "lucide-react";
-import { useEffect } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { MapPin, Plus, ChevronDown, Utensils, Bell, Flag, Check, Search } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Id } from "@/convex/_generated/dataModel";
 
 interface HeaderProps {
@@ -22,7 +35,14 @@ interface HeaderProps {
 export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
   const { user: clerkUser, isLoaded } = useUser();
   const currentUser = useQuery(api.users.getCurrent);
-  const campuses = useQuery(api.campuses.list, {});
+  const [campusSearchOpen, setCampusSearchOpen] = useState(false);
+  const [campusSearchTerm, setCampusSearchTerm] = useState("");
+  
+  // Use search query for campus selection (supports 380+ campuses efficiently)
+  const searchedCampuses = useQuery(
+    api.campuses.search,
+    campusSearchOpen ? { searchTerm: campusSearchTerm } : "skip"
+  );
   const currentCampus = useQuery(
     api.campuses.get,
     currentUser?.campusId ? { campusId: currentUser.campusId } : "skip"
@@ -54,6 +74,8 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
 
   const handleCampusChange = async (campusId: Id<"campuses">) => {
     await setCampus({ campusId });
+    setCampusSearchOpen(false);
+    setCampusSearchTerm("");
   };
 
   return (
@@ -69,12 +91,14 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
           </span>
         </div>
 
-        {/* Campus Selector */}
-        {isAuthenticated && currentUser && campuses && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+        {/* Campus Selector - Searchable */}
+        {isAuthenticated && currentUser && (
+          <Popover open={campusSearchOpen} onOpenChange={setCampusSearchOpen}>
+            <PopoverTrigger asChild>
               <Button
                 variant="outline"
+                role="combobox"
+                aria-expanded={campusSearchOpen}
                 className="gap-2 border-border/50 bg-secondary/50 hover:bg-secondary"
               >
                 <MapPin className="h-4 w-4 text-coral-500" />
@@ -83,19 +107,54 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                 </span>
                 <ChevronDown className="h-4 w-4 opacity-50" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="max-h-80 overflow-auto">
-              {campuses.map((campus) => (
-                <DropdownMenuItem
-                  key={campus._id}
-                  onClick={() => handleCampusChange(campus._id)}
-                  className="cursor-pointer"
-                >
-                  {campus.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </PopoverTrigger>
+            <PopoverContent className="w-[300px] p-0" align="center">
+              <Command className="bg-transparent" shouldFilter={false}>
+                <div className="relative border-b border-border/50">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <CommandInput
+                    placeholder="Search your university..."
+                    value={campusSearchTerm}
+                    onValueChange={setCampusSearchTerm}
+                    className="border-0 pl-9"
+                  />
+                </div>
+                <CommandList className="max-h-[250px]">
+                  <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
+                    {campusSearchTerm ? "No universities found." : "Start typing to search..."}
+                  </CommandEmpty>
+                  <CommandGroup>
+                    {searchedCampuses?.map((campus) => (
+                      <CommandItem
+                        key={campus._id}
+                        value={campus.name}
+                        onSelect={() => handleCampusChange(campus._id)}
+                        className={`cursor-pointer px-3 py-2 ${
+                          currentUser?.campusId === campus._id
+                            ? "bg-coral-500/10 text-coral-500"
+                            : ""
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <MapPin className={`h-4 w-4 ${
+                            currentUser?.campusId === campus._id
+                              ? "text-coral-500"
+                              : "text-muted-foreground"
+                          }`} />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">{campus.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {campus.city}, {campus.state}
+                            </span>
+                          </div>
+                        </div>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         )}
 
         {/* Right side */}

@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as campusData from "../campusData.js";
 import type * as campuses from "../campuses.js";
 import type * as food from "../food.js";
 import type * as notifications from "../notifications.js";
@@ -20,6 +21,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  campusData: typeof campusData;
   campuses: typeof campuses;
   food: typeof food;
   notifications: typeof notifications;
