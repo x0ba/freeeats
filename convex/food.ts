@@ -199,7 +199,33 @@ export const reportGone = mutation({
     // Check if this user has already reported this post
     const reportedBy = post.reportedBy ?? [];
     if (reportedBy.includes(user._id)) {
-      throw new Error("You have already reported this food post");
+      // User already reported, so unreport (toggle behavior)
+      const newReportedBy = reportedBy.filter((id) => id !== user._id);
+      const newReportCount = newReportedBy.length;
+      await ctx.db.patch(args.postId, {
+        goneReports: newReportCount,
+        reportedBy: newReportedBy,
+      });
+
+      // Update or delete the notification
+      const existingNotification = await ctx.db
+        .query("notifications")
+        .withIndex("by_user_and_post", (q) =>
+          q.eq("userId", post.createdBy).eq("foodPostId", args.postId)
+        )
+        .first();
+
+      if (existingNotification) {
+        if (newReportCount === 0) {
+          await ctx.db.delete(existingNotification._id);
+        } else {
+          await ctx.db.patch(existingNotification._id, {
+            reportCount: newReportCount,
+          });
+        }
+      }
+
+      return { success: true, reportCount: newReportCount, action: "unreported" };
     }
 
     // Increment the report counter and add user to reportedBy list
@@ -236,7 +262,7 @@ export const reportGone = mutation({
       });
     }
 
-    return { success: true, reportCount: newReportCount };
+    return { success: true, reportCount: newReportCount, action: "reported" };
   },
 });
 

@@ -4,7 +4,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Clock, MapPin, Trash2, Flag, Undo2, Pizza, Coffee, Cookie, Sandwich, Salad, UtensilsCrossed } from "lucide-react";
+import { Clock, MapPin, Trash2, Flag, Pizza, Coffee, Cookie, Sandwich, Salad, UtensilsCrossed } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -82,7 +82,6 @@ export function FoodCard({ post, onClick }: FoodCardProps) {
   const [timeRemaining, setTimeRemaining] = useState(post.timeRemaining);
   const markGone = useMutation(api.food.markGone);
   const reportGone = useMutation(api.food.reportGone);
-  const unreportGone = useMutation(api.food.unreportGone);
   const currentUser = useQuery(api.users.getCurrent);
   const [isMarkingGone, setIsMarkingGone] = useState(false);
   
@@ -121,25 +120,15 @@ export function FoodCard({ post, onClick }: FoodCardProps) {
     e.stopPropagation();
     setIsMarkingGone(true);
     try {
-      await reportGone({ postId: post._id });
-      toast.success("Thanks for reporting! The poster has been notified.");
+      const result = await reportGone({ postId: post._id });
+      if (result.action === "unreported") {
+        toast.success("Report withdrawn");
+      } else {
+        toast.success("Thanks for reporting! The poster has been notified.");
+      }
     } catch (error) {
       console.error("Failed to report:", error);
       toast.error("Failed to report");
-    } finally {
-      setIsMarkingGone(false);
-    }
-  };
-
-  const handleUndoReport = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsMarkingGone(true);
-    try {
-      await unreportGone({ postId: post._id });
-      toast.success("Report withdrawn");
-    } catch (error) {
-      console.error("Failed to undo report:", error);
-      toast.error("Failed to undo report");
     } finally {
       setIsMarkingGone(false);
     }
@@ -250,38 +239,24 @@ export function FoodCard({ post, onClick }: FoodCardProps) {
               Delete
             </Button>
           </div>
-        ) : hasReported ? (
-          <div className="flex items-center gap-1">
-            <div className="flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-1 text-[10px] text-amber-600">
-              <Flag className="h-3 w-3" />
-              <span>Reported</span>
-              {post.goneReports > 0 && (
-                <span className="font-medium">({post.goneReports})</span>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleUndoReport}
-              disabled={isMarkingGone || isExpired}
-              className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-            >
-              <Undo2 className="h-3 w-3" />
-              Undo
-            </Button>
-          </div>
         ) : (
           <Button
             variant="ghost"
             size="sm"
             onClick={handleReportGone}
             disabled={isMarkingGone || isExpired || !currentUser}
-            className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-amber-600"
+            className={`h-8 gap-1.5 text-xs ${
+              hasReported
+                ? "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 hover:text-amber-700"
+                : "text-muted-foreground hover:text-amber-600"
+            }`}
           >
-            <Flag className="h-3.5 w-3.5" />
-            Report Gone
+            <Flag className={`h-3.5 w-3.5 ${hasReported ? "fill-amber-500" : ""}`} />
+            {hasReported ? "Reported" : "Report Gone"}
             {post.goneReports > 0 && (
-              <span className="ml-1 rounded-full bg-amber-500/20 px-1.5 text-[10px] text-amber-600">
+              <span className={`ml-1 rounded-full px-1.5 text-[10px] ${
+                hasReported ? "bg-amber-500/20 text-amber-600" : "bg-amber-500/20 text-amber-600"
+              }`}>
                 {post.goneReports}
               </span>
             )}
