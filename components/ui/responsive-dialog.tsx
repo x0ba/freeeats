@@ -54,7 +54,7 @@ export function ResponsiveDialog({ children, ...props }: ResponsiveDialogProps) 
 
   return (
     <ContextProvider value={{ isDesktop }}>
-      <Drawer {...props}>{children}</Drawer>
+      <Drawer repositionInputs={false} {...props}>{children}</Drawer>
     </ContextProvider>
   )
 }
