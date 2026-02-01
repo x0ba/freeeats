@@ -6,10 +6,11 @@ import { FoodCard } from "./FoodCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Id } from "@/convex/_generated/dataModel";
-import { Pizza, Sandwich, Cookie, Coffee, UtensilsCrossed, Salad } from "lucide-react";
-import { useState } from "react";
+import { Pizza, Sandwich, Cookie, Coffee, UtensilsCrossed, Salad, Heart } from "lucide-react";
+import { useState, useMemo } from "react";
 
 type FoodType = "pizza" | "sandwiches" | "snacks" | "drinks" | "desserts" | "asian" | "mexican" | "other";
+type DietaryTag = "vegetarian" | "vegan" | "halal" | "kosher" | "gluten-free" | "dairy-free" | "nut-free";
 
 interface FoodFeedProps {
   campusId: Id<"campuses">;
@@ -29,10 +30,49 @@ const filterOptions: { value: FoodType | "all"; label: string; icon: typeof Pizz
 export function FoodFeed({ campusId }: FoodFeedProps) {
   const [filter, setFilter] = useState<FoodType | "all">("all");
   const posts = useQuery(api.food.listByCampus, { campusId });
+  const currentUser = useQuery(api.users.getCurrent);
 
-  const filteredPosts = posts?.filter((post) => 
+  // Sort posts by user preferences (matching posts first)
+  const sortedPosts = useMemo(() => {
+    if (!posts) return undefined;
+    if (!currentUser) return posts;
+
+    const preferredFoodTypes = currentUser.preferredFoodTypes ?? [];
+    const dietaryRestrictions = currentUser.dietaryRestrictions ?? [];
+
+    // If no preferences, return original order
+    if (preferredFoodTypes.length === 0 && dietaryRestrictions.length === 0) {
+      return posts;
+    }
+
+    return [...posts].sort((a, b) => {
+      const aMatchesFoodType = preferredFoodTypes.includes(a.foodType);
+      const bMatchesFoodType = preferredFoodTypes.includes(b.foodType);
+      const aMatchesDietary = a.dietaryTags?.some(tag => dietaryRestrictions.includes(tag)) ?? false;
+      const bMatchesDietary = b.dietaryTags?.some(tag => dietaryRestrictions.includes(tag)) ?? false;
+
+      const aScore = (aMatchesFoodType ? 2 : 0) + (aMatchesDietary ? 1 : 0);
+      const bScore = (bMatchesFoodType ? 2 : 0) + (bMatchesDietary ? 1 : 0);
+
+      return bScore - aScore; // Higher score first
+    });
+  }, [posts, currentUser]);
+
+  const filteredPosts = sortedPosts?.filter((post) => 
     filter === "all" ? true : post.foodType === filter
   );
+
+  // Check if a post matches user preferences
+  const matchesPreferences = (post: { foodType: FoodType; dietaryTags?: DietaryTag[] }) => {
+    if (!currentUser) return false;
+    const preferredFoodTypes = currentUser.preferredFoodTypes ?? [];
+    const dietaryRestrictions = currentUser.dietaryRestrictions ?? [];
+    
+    const matchesFoodType = preferredFoodTypes.includes(post.foodType);
+    const matchesDietary = post.dietaryTags?.some(tag => dietaryRestrictions.includes(tag)) ?? false;
+    
+    return matchesFoodType || matchesDietary;
+  };
 
   if (posts === undefined) {
     return (
@@ -91,7 +131,14 @@ export function FoodFeed({ campusId }: FoodFeedProps) {
       {filteredPosts && filteredPosts.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredPosts.map((post) => (
-            <FoodCard key={post._id} post={post} />
+            <div key={post._id} className="relative">
+              {matchesPreferences(post) && (
+                <div className="absolute -right-1 -top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-coral-500 to-coral-600 shadow-lg shadow-coral-500/30">
+                  <Heart className="h-3 w-3 fill-white text-white" />
+                </div>
+              )}
+              <FoodCard post={post} />
+            </div>
           ))}
         </div>
       ) : (

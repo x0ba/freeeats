@@ -20,7 +20,28 @@ export default defineSchema({
     email: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     campusId: v.optional(v.id("campuses")),
+    // Food preferences for personalized feed/map
+    preferredFoodTypes: v.optional(v.array(v.union(
+      v.literal("pizza"),
+      v.literal("sandwiches"),
+      v.literal("snacks"),
+      v.literal("drinks"),
+      v.literal("desserts"),
+      v.literal("asian"),
+      v.literal("mexican"),
+      v.literal("other")
+    ))),
+    dietaryRestrictions: v.optional(v.array(v.union(
+      v.literal("vegetarian"),
+      v.literal("vegan"),
+      v.literal("halal"),
+      v.literal("kosher"),
+      v.literal("gluten-free"),
+      v.literal("dairy-free"),
+      v.literal("nut-free")
+    ))),
   }).index("by_clerk_id", ["clerkId"]),
+
 
   // Food posts created by users
   foodPosts: defineTable({

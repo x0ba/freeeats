@@ -32,6 +32,10 @@ interface FoodMapProps {
   zoom?: number;
   onMarkerClick?: (post: FoodPost) => void;
   className?: string;
+  userPreferences?: {
+    preferredFoodTypes?: FoodType[];
+    dietaryRestrictions?: DietaryTag[];
+  };
 }
 
 // Food emoji for markers
@@ -56,32 +60,37 @@ const dietaryTagConfig: Record<DietaryTag, { icon: string; label: string }> = {
   "nut-free": { icon: "🥜", label: "Nut-Free" },
 };
 
-function createFoodMarker(foodType: FoodType, isExpiringSoon: boolean): DivIcon {
+function createFoodMarker(foodType: FoodType, isExpiringSoon: boolean, isHighlighted: boolean): DivIcon {
   const emoji = foodEmojis[foodType];
   const pulseClass = isExpiringSoon ? "animate-pulse" : "";
+  const size = isHighlighted ? 48 : 40;
+  const fontSize = isHighlighted ? 28 : 24;
+  const glowStyle = isHighlighted 
+    ? "box-shadow: 0 0 20px 6px rgba(255, 107, 107, 0.6), 0 4px 12px rgba(255, 107, 107, 0.4);"
+    : "box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);";
   
   return new DivIcon({
     html: `
       <div class="food-marker ${pulseClass}" style="
-        width: 40px;
-        height: 40px;
+        width: ${size}px;
+        height: ${size}px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
+        font-size: ${fontSize}px;
         background: linear-gradient(135deg, #FF6B6B, #FF8E8E);
         border-radius: 50% 50% 50% 0;
         transform: rotate(-45deg);
-        box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+        ${glowStyle}
         border: 3px solid white;
       ">
         <span style="transform: rotate(45deg);">${emoji}</span>
       </div>
     `,
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40],
-    className: "food-marker-container",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size],
+    popupAnchor: [0, -size],
+    className: isHighlighted ? "food-marker-container highlighted" : "food-marker-container",
   });
 }
 
@@ -153,7 +162,7 @@ function MapRecenter({ center }: { center: [number, number] }) {
   return null;
 }
 
-export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "" }: FoodMapProps) {
+export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "", userPreferences }: FoodMapProps) {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
 
@@ -209,10 +218,18 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
   const markers = useMemo(() => {
     return posts.map((post) => {
       const isExpiringSoon = post.timeRemaining < 1800000; // 30 minutes
-      const marker = createFoodMarker(post.foodType, isExpiringSoon);
-      return { post, marker };
+      
+      // Check if post matches user preferences
+      const preferredFoodTypes = userPreferences?.preferredFoodTypes ?? [];
+      const dietaryRestrictions = userPreferences?.dietaryRestrictions ?? [];
+      const matchesFoodType = preferredFoodTypes.includes(post.foodType);
+      const matchesDietary = post.dietaryTags?.some(tag => dietaryRestrictions.includes(tag)) ?? false;
+      const isHighlighted = matchesFoodType || matchesDietary;
+      
+      const marker = createFoodMarker(post.foodType, isExpiringSoon, isHighlighted);
+      return { post, marker, isHighlighted };
     });
-  }, [posts]);
+  }, [posts, userPreferences]);
 
   const userLocationMarker = useMemo(() => createUserLocationMarker(), []);
 

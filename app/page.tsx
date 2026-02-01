@@ -7,6 +7,7 @@ import { api } from "@/convex/_generated/api";
 import { Header } from "@/components/Header";
 import { FoodFeed } from "@/components/FoodFeed";
 import { CampusSelector } from "@/components/CampusSelector";
+import { PreferencesSelector } from "@/components/PreferencesSelector";
 import { AddFoodDialog } from "@/components/AddFoodDialog";
 import { Button } from "@/components/ui/button";
 import { SignInButton, SignUpButton } from "@clerk/nextjs";
@@ -75,6 +76,12 @@ function AuthenticatedApp() {
     return <CampusSelector onCampusSelected={() => {}} />;
   }
 
+  // Show preferences selector if user hasn't set food preferences yet
+  const hasSetPreferences = currentUser?.preferredFoodTypes !== undefined || currentUser?.dietaryRestrictions !== undefined;
+  if (currentUser && currentUser.campusId && !hasSetPreferences) {
+    return <PreferencesSelector onPreferencesSelected={() => {}} />;
+  }
+
   const campusCenter: [number, number] = campus
     ? [campus.latitude, campus.longitude]
     : [37.8719, -122.2585]; // Default to Berkeley
@@ -122,6 +129,10 @@ function AuthenticatedApp() {
                 center={campusCenter}
                 zoom={16}
                 className="h-full w-full"
+                userPreferences={{
+                  preferredFoodTypes: currentUser?.preferredFoodTypes,
+                  dietaryRestrictions: currentUser?.dietaryRestrictions,
+                }}
               />
             )}
           </div>
