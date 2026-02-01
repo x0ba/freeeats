@@ -108,14 +108,14 @@ function formatDistance(meters: number, useImperial: boolean = true): string {
 }
 
 const foodTypeConfig: Record<FoodType, { icon: typeof Pizza; color: string; label: string; emoji: string }> = {
-  pizza: { icon: Pizza, color: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30", label: "Pizza", emoji: "🍕" },
-  sandwiches: { icon: Sandwich, color: "bg-amber-600/15 text-amber-700 dark:text-amber-400 border-amber-600/30", label: "Sandwiches", emoji: "🥪" },
-  snacks: { icon: Cookie, color: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30", label: "Snacks", emoji: "🍿" },
-  drinks: { icon: Coffee, color: "bg-forest-500/15 text-forest-700 dark:text-forest-400 border-forest-500/30", label: "Drinks", emoji: "☕" },
-  desserts: { icon: Cookie, color: "bg-primary/15 text-primary border-primary/30", label: "Desserts", emoji: "🍰" },
-  asian: { icon: UtensilsCrossed, color: "bg-primary/15 text-primary border-primary/30", label: "Asian", emoji: "🍜" },
-  mexican: { icon: Salad, color: "bg-forest-500/15 text-forest-700 dark:text-forest-400 border-forest-500/30", label: "Mexican", emoji: "🌮" },
-  other: { icon: UtensilsCrossed, color: "bg-secondary text-secondary-foreground border-border", label: "Other", emoji: "🍽️" },
+  pizza: { icon: Pizza, color: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-800", label: "Pizza", emoji: "🍕" },
+  sandwiches: { icon: Sandwich, color: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:border-orange-800", label: "Sandwiches", emoji: "🥪" },
+  snacks: { icon: Cookie, color: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-300 dark:border-yellow-800", label: "Snacks", emoji: "🍿" },
+  drinks: { icon: Coffee, color: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800", label: "Drinks", emoji: "☕" },
+  desserts: { icon: Cookie, color: "bg-pink-100 text-pink-800 border-pink-200 dark:bg-pink-900/40 dark:text-pink-300 dark:border-pink-800", label: "Desserts", emoji: "🍰" },
+  asian: { icon: UtensilsCrossed, color: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800", label: "Asian", emoji: "🍜" },
+  mexican: { icon: Salad, color: "bg-lime-100 text-lime-800 border-lime-200 dark:bg-lime-900/40 dark:text-lime-300 dark:border-lime-800", label: "Mexican", emoji: "🌮" },
+  other: { icon: UtensilsCrossed, color: "bg-stone-100 text-stone-800 border-stone-200 dark:bg-stone-800 dark:text-stone-300 dark:border-stone-700", label: "Other", emoji: "🍽️" },
 };
 
 const dietaryTagConfig: Record<DietaryTag, { icon: string; label: string }> = {
