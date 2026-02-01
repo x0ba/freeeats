@@ -1,18 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Outfit, DM_Sans } from "next/font/google";
+import { Fraunces, Instrument_Sans } from "next/font/google";
 import "./globals.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "@/components/ui/sonner";
 
-const outfit = Outfit({
-  variable: "--font-outfit",
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
   display: "swap",
 });
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const instrumentSans = Instrument_Sans({
+  variable: "--font-instrument-sans",
   subsets: ["latin"],
   display: "swap",
 });
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#FF6B6B",
+  themeColor: "#C4532E",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -72,7 +72,7 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body
-        className={`${outfit.variable} ${dmSans.variable} font-sans antialiased`}
+        className={`${fraunces.variable} ${instrumentSans.variable} font-sans antialiased`}
       >
         <ClerkProvider dynamic>
           <ConvexClientProvider>

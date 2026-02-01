@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Camera, Clock, Loader2, MapPin, Utensils, X, Upload, Search, CheckCircle2 } from "lucide-react";
+import { Clock, Loader2, MapPin, Utensils, X, Upload, Search, CheckCircle2, Camera } from "lucide-react";
 
 type FoodType = "pizza" | "sandwiches" | "snacks" | "drinks" | "desserts" | "asian" | "mexican" | "other";
 
@@ -88,29 +88,29 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [dietaryTags, setDietaryTags] = useState<string[]>([]);
-  
+
   // Address search state
   const [addressQuery, setAddressQuery] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  
+  const [isAddressInputFocused, setIsAddressInputFocused] = useState(false);
+
   const debouncedAddressQuery = useDebounce(addressQuery, 400);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addressInputRef = useRef<HTMLInputElement>(null);
 
   const createPost = useAction(api.food.create);
   const generateUploadUrl = useMutation(api.food.generateUploadUrl);
-  
+
   // Geocoding search effect
   const searchAddress = useCallback(async (query: string) => {
     if (!query.trim() || query.length < 3) {
       setAddressSuggestions([]);
       return;
     }
-    
+
     setIsSearching(true);
     try {
       // Search near campus for more relevant results
@@ -127,7 +127,6 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
       );
       const data: AddressSuggestion[] = await response.json();
       setAddressSuggestions(data);
-      setShowSuggestions(data.length > 0);
     } catch (error) {
       console.error("Geocoding error:", error);
       setAddressSuggestions([]);
@@ -135,26 +134,24 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
       setIsSearching(false);
     }
   }, [campusCenter]);
-  
+
   // Trigger search when debounced query changes
   useEffect(() => {
     if (debouncedAddressQuery) {
       searchAddress(debouncedAddressQuery);
     } else {
       setAddressSuggestions([]);
-      setShowSuggestions(false);
     }
   }, [debouncedAddressQuery, searchAddress]);
-  
+
   // Handle selecting an address suggestion
   const handleSelectAddress = (suggestion: AddressSuggestion) => {
     const lat = parseFloat(suggestion.lat);
     const lng = parseFloat(suggestion.lon);
     setSelectedCoords({ lat, lng });
     setAddressQuery(suggestion.display_name);
-    setShowSuggestions(false);
     setAddressSuggestions([]);
-    
+
     // If location name is empty, set a shortened version as the location name
     if (!locationName.trim()) {
       // Extract the first part of the address (usually the building/place name)
@@ -193,7 +190,6 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
     setAddressQuery("");
     setSelectedCoords(null);
     setAddressSuggestions([]);
-    setShowSuggestions(false);
     clearImage();
   };
 
@@ -244,10 +240,10 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
 
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
-      <ResponsiveDialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
-        <ResponsiveDialogHeader>
-          <ResponsiveDialogTitle className="flex items-center gap-2 font-outfit text-xl">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-coral-500 to-coral-600">
+      <ResponsiveDialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px] border-2 border-border bg-card paper-shadow paper-rotate-1">
+        <ResponsiveDialogHeader className="pt-4">
+          <ResponsiveDialogTitle className="flex items-center gap-2 font-display text-xl">
+            <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-primary shadow-md">
               <Utensils className="h-4 w-4 text-white" />
             </div>
             Share Free Food
@@ -258,22 +254,26 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
         </ResponsiveDialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Image Upload */}
+          {/* Image Upload - Polaroid Style */}
           <div className="space-y-2">
-            <Label>Photo</Label>
+            <Label className="font-display">Photo</Label>
             <div
               onClick={() => fileInputRef.current?.click()}
-              className={`relative flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border/50 bg-secondary/30 p-6 transition-colors hover:border-coral-500/50 hover:bg-secondary/50 ${
-                imagePreview ? "p-0" : ""
+              className={`relative flex cursor-pointer flex-col items-center justify-center rounded-sm border-2 border-dashed border-border bg-secondary/30 p-6 transition-colors hover:border-primary/50 hover:bg-secondary/50 ${
+                imagePreview ? "p-0 bg-cream-50" : ""
               }`}
             >
               {imagePreview ? (
-                <div className="relative w-full">
+                <div className="relative w-full p-3 pb-8 bg-white shadow-sm">
+                  {/* Polaroid frame */}
                   <img
                     src={imagePreview}
                     alt="Preview"
-                    className="h-48 w-full rounded-lg object-cover"
+                    className="w-full aspect-[4/3] object-cover rounded-sm"
                   />
+                  <div className="absolute bottom-2 left-0 right-0 text-center">
+                    <span className="text-xs text-muted-foreground font-handwriting">📷 Food Photo</span>
+                  </div>
                   <Button
                     type="button"
                     variant="secondary"
@@ -282,18 +282,21 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
                       e.stopPropagation();
                       clearImage();
                     }}
-                    className="absolute right-2 top-2 h-8 w-8 rounded-full"
+                    className="absolute right-4 top-4 h-7 w-7 rounded-full shadow-md"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3 w-3" />
                   </Button>
                 </div>
               ) : (
                 <>
-                  <div className="mb-2 rounded-full bg-coral-500/10 p-3">
-                    <Camera className="h-6 w-6 text-coral-500" />
+                  <div className="mb-2 rounded-sm bg-primary/10 p-3 border border-primary/20">
+                    <Camera className="h-6 w-6 text-primary" />
                   </div>
                   <span className="text-sm text-muted-foreground">
                     Click to add a photo
+                  </span>
+                  <span className="text-xs text-muted-foreground mt-1">
+                    Polaroid style
                   </span>
                 </>
               )}
@@ -307,29 +310,31 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
             />
           </div>
 
-          {/* Title */}
+          {/* Title - Underline Style Input */}
           <div className="space-y-2">
-            <Label htmlFor="title">What&apos;s the food? *</Label>
-            <Input
-              id="title"
-              placeholder="e.g., Leftover pizza from club meeting"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="border-border/50 bg-secondary/30"
-              required
-            />
+            <Label htmlFor="title" className="font-display">What&apos;s the food? *</Label>
+            <div className="relative">
+              <Input
+                id="title"
+                placeholder="e.g., Leftover pizza from club meeting"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="border-0 border-b-2 border-border bg-transparent rounded-none px-0 focus:border-primary focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50"
+                required
+              />
+            </div>
           </div>
 
-          {/* Food Type */}
+          {/* Food Type - Sticker Style */}
           <div className="space-y-2">
-            <Label>Food Type</Label>
+            <Label className="font-display">Food Type</Label>
             <Select value={foodType} onValueChange={(v) => setFoodType(v as FoodType)}>
-              <SelectTrigger className="border-border/50 bg-secondary/30">
+              <SelectTrigger className="border-2 border-border bg-card rounded-sm focus:ring-primary/20">
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="border-2 border-border">
                 {foodTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
+                  <SelectItem key={type.value} value={type.value} className="rounded-sm">
                     <span className="flex items-center gap-2">
                       <span>{type.emoji}</span>
                       <span>{type.label}</span>
@@ -342,9 +347,9 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
 
           {/* Address Search */}
           <div className="space-y-2">
-            <Label>Search Address for Map Pin</Label>
+            <Label className="font-display">Search Address for Map Pin</Label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 ref={addressInputRef}
                 placeholder="Start typing an address..."
@@ -355,23 +360,23 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
                     setSelectedCoords(null);
                   }
                 }}
-                onFocus={() => {
-                  if (addressSuggestions.length > 0) {
-                    setShowSuggestions(true);
-                  }
+                onFocus={() => setIsAddressInputFocused(true)}
+                onBlur={() => {
+                  // Delay hiding to allow click events on suggestions to fire
+                  setTimeout(() => setIsAddressInputFocused(false), 150);
                 }}
-                className="border-border/50 bg-secondary/30 pl-10 pr-10"
+                className="border-0 border-b-2 border-border bg-transparent rounded-none pl-6 pr-10 focus:border-primary focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               {isSearching && (
-                <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                <Loader2 className="absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
               )}
               {selectedCoords && !isSearching && (
-                <CheckCircle2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-green-500" />
+                <CheckCircle2 className="absolute right-0 top-1/2 h-4 w-4 -translate-y-1/2 text-forest-500" />
               )}
-              
+
               {/* Suggestions Dropdown */}
-              {showSuggestions && addressSuggestions.length > 0 && (
-                <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border/50 bg-background shadow-lg">
+              {isAddressInputFocused && addressSuggestions.length > 0 && (
+                <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-sm border-2 border-border bg-card shadow-lg">
                   {addressSuggestions.map((suggestion) => (
                     <button
                       key={suggestion.place_id}
@@ -379,7 +384,7 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
                       onClick={() => handleSelectAddress(suggestion)}
                       className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-secondary/50"
                     >
-                      <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-coral-500" />
+                      <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
                       <span className="line-clamp-2">{suggestion.display_name}</span>
                     </button>
                   ))}
@@ -387,7 +392,7 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
               )}
             </div>
             {selectedCoords && (
-              <p className="flex items-center gap-1 text-xs text-green-500">
+              <p className="flex items-center gap-1 text-xs text-forest-500 font-medium">
                 <CheckCircle2 className="h-3 w-3" />
                 Location set at {selectedCoords.lat.toFixed(5)}, {selectedCoords.lng.toFixed(5)}
               </p>
@@ -401,15 +406,15 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
 
           {/* Location Name */}
           <div className="space-y-2">
-            <Label htmlFor="location">Location Description *</Label>
+            <Label htmlFor="location" className="font-display">Location Description *</Label>
             <div className="relative">
-              <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <MapPin className="absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 id="location"
                 placeholder="e.g., Engineering Building Room 101"
                 value={locationName}
                 onChange={(e) => setLocationName(e.target.value)}
-                className="border-border/50 bg-secondary/30 pl-10"
+                className="border-0 border-b-2 border-border bg-transparent rounded-none pl-6 focus:border-primary focus-visible:ring-0 focus-visible:ring-offset-0"
                 required
               />
             </div>
@@ -418,19 +423,19 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
             </p>
           </div>
 
-          {/* Duration */}
+          {/* Duration - Stamp Style */}
           <div className="space-y-2">
-            <Label>How long will it last?</Label>
+            <Label className="font-display">How long will it last?</Label>
             <Select value={duration} onValueChange={setDuration}>
-              <SelectTrigger className="border-border/50 bg-secondary/30">
+              <SelectTrigger className="border-2 border-border bg-card rounded-sm focus:ring-primary/20">
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <SelectValue placeholder="Select duration" />
                 </div>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="border-2 border-border">
                 {durations.map((d) => (
-                  <SelectItem key={d.value} value={d.value.toString()}>
+                  <SelectItem key={d.value} value={d.value.toString()} className="rounded-sm">
                     {d.label}
                   </SelectItem>
                 ))}
@@ -438,9 +443,9 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
             </Select>
           </div>
 
-          {/* Dietary Tags */}
+          {/* Dietary Tags - Paper Tag Style */}
           <div className="space-y-2">
-            <Label>Dietary Options</Label>
+            <Label className="font-display">Dietary Options</Label>
             <div className="grid grid-cols-2 gap-2">
               {[
                 { id: "vegetarian", label: "Vegetarian", icon: "🥬" },
@@ -463,15 +468,15 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
                           : [...prev, tag.id]
                       );
                     }}
-                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-all ${
+                    className={`flex items-center gap-2 rounded-sm border-2 px-3 py-2 text-left text-sm transition-all ${
                       isSelected
-                        ? "border-green-500/50 bg-green-500/10 text-green-500"
-                        : "border-border/50 bg-secondary/30 text-muted-foreground hover:bg-secondary/50"
+                        ? "border-forest-500 bg-forest-500/10 text-forest-500 shadow-sm"
+                        : "border-border bg-card text-muted-foreground hover:border-primary/30 hover:shadow-sm"
                     }`}
                   >
                     <span>{tag.icon}</span>
-                    <span className={isSelected ? "text-green-500 font-medium" : ""}>{tag.label}</span>
-                    {isSelected && <span className="ml-auto text-green-500">✓</span>}
+                    <span className={isSelected ? "font-medium" : ""}>{tag.label}</span>
+                    {isSelected && <span className="ml-auto">✓</span>}
                   </button>
                 );
               })}
@@ -480,29 +485,30 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description">Additional Details</Label>
+            <Label htmlFor="description" className="font-display">Additional Details</Label>
             <Textarea
               id="description"
               placeholder="e.g., About 3 boxes left, vegetarian options available"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="min-h-[80px] resize-none border-border/50 bg-secondary/30"
+              className="min-h-[80px] resize-none border-2 border-border bg-card rounded-sm focus:border-primary focus-visible:ring-primary/20"
             />
           </div>
 
-          <ResponsiveDialogFooter>
+          <ResponsiveDialogFooter className="gap-2 sm:gap-0">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
+              className="rounded-sm"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={!title.trim() || !locationName.trim() || isSubmitting}
-              className="gap-2 bg-gradient-to-r from-coral-500 to-coral-600 text-white"
+              className="gap-2 bg-primary text-primary-foreground shadow-md hover:shadow-lg transition-shadow rounded-sm relative"
             >
               {isSubmitting ? (
                 <>
