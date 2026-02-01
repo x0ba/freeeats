@@ -235,50 +235,8 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
       resetForm();
       onOpenChange(false);
       toast.success("Food shared successfully! 🎉");
-    } catch (error: unknown) {
-      // Extract user-friendly error message from Convex error formats
-      // Convex action errors look like: "[CONVEX A(food:create)] [Request ID: xxx] Server Error...\n\nActual message"
-      let errorMessage = "Please make sure your post is about food.";
-      
-      if (error instanceof Error) {
-        const rawMessage = error.message;
-        
-        // If the message contains the Convex header format, extract the actual message after it
-        // Pattern: [CONVEX ...] [Request ID: ...] ... followed by the actual error
-        if (rawMessage.includes("[CONVEX")) {
-          // The actual error message is typically after double newlines or after "Uncaught Error:"
-          const uncaughtMatch = rawMessage.match(/Uncaught Error:\s*([\s\S]+?)(?:\s*at\s|$)/);
-          if (uncaughtMatch) {
-            errorMessage = uncaughtMatch[1].trim();
-          } else {
-            // Try to find text after the Request ID block
-            const lines = rawMessage.split("\n").filter(line => line.trim());
-            // Find lines that don't start with [ (skip the header lines)
-            const contentLines = lines.filter(line => !line.trim().startsWith("["));
-            if (contentLines.length > 0) {
-              errorMessage = contentLines.join(" ").trim();
-            }
-          }
-        } else {
-          // Standard error formats
-          const convexMatch = rawMessage.match(/ConvexError:\s*(.+)/);
-          if (convexMatch) {
-            errorMessage = convexMatch[1].trim();
-          } else {
-            errorMessage = rawMessage;
-          }
-        }
-      } else if (typeof error === "object" && error !== null && "data" in error) {
-        // ConvexError format with data
-        errorMessage = String((error as { data: unknown }).data);
-      } else if (typeof error === "object" && error !== null && "message" in error) {
-        errorMessage = String((error as { message: unknown }).message);
-      }
-      
-      toast.error("Couldn't share your post", {
-        duration: 6000,
-        description: errorMessage,
-      });
+    } catch {
+      toast.error("This post is not about food");
     } finally {
       setIsSubmitting(false);
     }
