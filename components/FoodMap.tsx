@@ -4,8 +4,10 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from "react-le
 import { DivIcon } from "leaflet";
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Clock, MapPin } from "lucide-react";
+import { Clock, MapPin, Heart } from "lucide-react";
 import { Id } from "@/convex/_generated/dataModel";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import "leaflet/dist/leaflet.css";
 
 type FoodType = "pizza" | "sandwiches" | "snacks" | "drinks" | "desserts" | "asian" | "mexican" | "other";
@@ -25,6 +27,10 @@ interface FoodPost {
   creator: { name: string; imageUrl?: string } | null;
   dietaryTags?: DietaryTag[];
 }
+
+type CuisinePreferences = {
+  [key in FoodType]?: number;
+};
 
 interface FoodMapProps {
   posts: FoodPost[];
@@ -56,9 +62,34 @@ const dietaryTagConfig: Record<DietaryTag, { icon: string; label: string }> = {
   "nut-free": { icon: "🥜", label: "Nut-Free" },
 };
 
-function createFoodMarker(foodType: FoodType, isExpiringSoon: boolean): DivIcon {
+function createFoodMarker(foodType: FoodType, isExpiringSoon: boolean, isFavorite: boolean): DivIcon {
   const emoji = foodEmojis[foodType];
   const pulseClass = isExpiringSoon ? "animate-pulse" : "";
+  // Use gold/amber gradient for favorites, coral for regular
+  const bgGradient = isFavorite 
+    ? "linear-gradient(135deg, #F59E0B, #FBBF24)" 
+    : "linear-gradient(135deg, #FF6B6B, #FF8E8E)";
+  const shadowColor = isFavorite 
+    ? "rgba(245, 158, 11, 0.5)" 
+    : "rgba(255, 107, 107, 0.4)";
+  const favoriteHeart = isFavorite 
+    ? `<div style="
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        width: 20px;
+        height: 20px;
+        background: linear-gradient(135deg, #FF6B6B, #F59E0B);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        transform: rotate(45deg);
+      "><span style="transform: rotate(-45deg);">❤️</span></div>`
+    : "";
   
   return new DivIcon({
     html: `
@@ -69,13 +100,15 @@ function createFoodMarker(foodType: FoodType, isExpiringSoon: boolean): DivIcon 
         align-items: center;
         justify-content: center;
         font-size: 24px;
-        background: linear-gradient(135deg, #FF6B6B, #FF8E8E);
+        background: ${bgGradient};
         border-radius: 50% 50% 50% 0;
         transform: rotate(-45deg);
-        box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+        box-shadow: 0 4px 12px ${shadowColor};
         border: 3px solid white;
+        position: relative;
       ">
         <span style="transform: rotate(45deg);">${emoji}</span>
+        ${favoriteHeart}
       </div>
     `,
     iconSize: [40, 40],
@@ -156,6 +189,14 @@ function MapRecenter({ center }: { center: [number, number] }) {
 export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "" }: FoodMapProps) {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
+  const cuisinePreferences = useQuery(api.users.getCuisinePreferences) as CuisinePreferences | null | undefined;
+
+  // Check if a food type is a "favorite" (rated 4+ by user)
+  const isFavorite = (foodType: FoodType): boolean => {
+    if (!cuisinePreferences) return false;
+    const rating = cuisinePreferences[foodType];
+    return typeof rating === "number" && rating >= 4;
+  };
 
   // Track theme changes
   useEffect(() => {
@@ -209,10 +250,12 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
   const markers = useMemo(() => {
     return posts.map((post) => {
       const isExpiringSoon = post.timeRemaining < 1800000; // 30 minutes
-      const marker = createFoodMarker(post.foodType, isExpiringSoon);
-      return { post, marker };
+      const postIsFavorite = isFavorite(post.foodType);
+      const marker = createFoodMarker(post.foodType, isExpiringSoon, postIsFavorite);
+      return { post, marker, isFavorite: postIsFavorite };
     });
-  }, [posts]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posts, cuisinePreferences]);
 
   const userLocationMarker = useMemo(() => createUserLocationMarker(), []);
 
@@ -266,7 +309,7 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
           </>
         )}
         
-        {markers.map(({ post, marker }) => (
+        {markers.map(({ post, marker, isFavorite: postIsFavorite }) => (
           <Marker
             key={post._id}
             position={[post.latitude, post.longitude]}
@@ -284,7 +327,15 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
                     className="mb-2 h-24 w-full rounded-lg object-cover"
                   />
                 )}
-                <h3 className="font-outfit text-base font-semibold">{post.title}</h3>
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-outfit text-base font-semibold">{post.title}</h3>
+                  {postIsFavorite && (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-coral-500 to-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                      <Heart className="h-2.5 w-2.5 fill-current" />
+                      Fave
+                    </span>
+                  )}
+                </div>
                 <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                   <MapPin className="h-3 w-3" />
                   {post.locationName}

@@ -29,6 +29,14 @@ const filterOptions: { value: FoodType | "all"; label: string; icon: typeof Pizz
 export function FoodFeed({ campusId }: FoodFeedProps) {
   const [filter, setFilter] = useState<FoodType | "all">("all");
   const posts = useQuery(api.food.listByCampus, { campusId });
+  const cuisinePreferences = useQuery(api.users.getCuisinePreferences);
+
+  // Check if a food type is a "favorite" (rated 4+ by user)
+  const isFavorite = (foodType: FoodType): boolean => {
+    if (!cuisinePreferences) return false;
+    const rating = cuisinePreferences[foodType as keyof typeof cuisinePreferences];
+    return typeof rating === "number" && rating >= 4;
+  };
 
   const filteredPosts = posts?.filter((post) => 
     filter === "all" ? true : post.foodType === filter
@@ -91,7 +99,7 @@ export function FoodFeed({ campusId }: FoodFeedProps) {
       {filteredPosts && filteredPosts.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredPosts.map((post) => (
-            <FoodCard key={post._id} post={post} />
+            <FoodCard key={post._id} post={post} isFavorite={isFavorite(post.foodType)} />
           ))}
         </div>
       ) : (

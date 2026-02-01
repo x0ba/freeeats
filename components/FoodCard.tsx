@@ -15,7 +15,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Clock, MapPin, Trash2, Flag, Pizza, Coffee, Cookie, Sandwich, Salad, UtensilsCrossed, Star, Loader2, MessageSquare, ImagePlus, X } from "lucide-react";
+import { Clock, MapPin, Trash2, Flag, Pizza, Coffee, Cookie, Sandwich, Salad, UtensilsCrossed, Star, Loader2, MessageSquare, ImagePlus, X, Heart } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -48,6 +48,7 @@ interface FoodPostData {
 interface FoodCardProps {
   post: FoodPostData;
   onClick?: () => void;
+  isFavorite?: boolean;
 }
 
 const foodTypeConfig: Record<FoodType, { icon: typeof Pizza; color: string; label: string }> = {
@@ -91,7 +92,7 @@ function formatTimeAgo(timestamp: number): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-export function FoodCard({ post, onClick }: FoodCardProps) {
+export function FoodCard({ post, onClick, isFavorite = false }: FoodCardProps) {
   const [timeRemaining, setTimeRemaining] = useState(post.timeRemaining);
   const [isMarkingGone, setIsMarkingGone] = useState(false);
   
@@ -294,11 +295,17 @@ export function FoodCard({ post, onClick }: FoodCardProps) {
         </div>
 
         {/* Food Type Badge */}
-        <div className="absolute left-2 top-2">
+        <div className="absolute left-2 top-2 flex flex-col gap-1">
           <Badge className={`${config.color} gap-1`}>
             <FoodIcon className="h-3 w-3" />
             {config.label}
           </Badge>
+          {isFavorite && (
+            <Badge className="gap-1 bg-gradient-to-r from-coral-500 to-amber-500 text-white shadow-lg shadow-coral-500/25">
+              <Heart className="h-3 w-3 fill-current" />
+              Favorite
+            </Badge>
+          )}
         </div>
       </div>
 
