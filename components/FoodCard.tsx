@@ -15,7 +15,14 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Clock, MapPin, Trash2, Flag, Pizza, Coffee, Cookie, Sandwich, Salad, UtensilsCrossed, Star, Loader2, MessageSquare, ImagePlus, X } from "lucide-react";
+import { Clock, MapPin, Trash2, Flag, Pizza, Coffee, Cookie, Sandwich, Salad, UtensilsCrossed, Star, Loader2, MessageSquare, ImagePlus, X, Pencil, Plus, Search, CheckCircle2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -32,6 +39,8 @@ interface FoodPostData {
   description?: string;
   foodType: FoodType;
   locationName: string;
+  latitude: number;
+  longitude: number;
   imageUrl: string | null;
   expiresAt: number;
   timeRemaining: number;
@@ -43,6 +52,30 @@ interface FoodPostData {
   dietaryTags?: DietaryTag[];
   averageRating?: number;
   reviewCount?: number;
+}
+
+interface AddressSuggestion {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+}
+
+// Debounce hook for address search
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
 }
 
 interface FoodCardProps {
@@ -108,11 +141,35 @@ export function FoodCard({ post, onClick }: FoodCardProps) {
   const [existingReviewImageId, setExistingReviewImageId] = useState<Id<"_storage"> | null>(null);
   const reviewImageInputRef = useRef<HTMLInputElement>(null);
 
+  // Edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editTitle, setEditTitle] = useState(post.title);
+  const [editDescription, setEditDescription] = useState(post.description ?? "");
+  const [editFoodType, setEditFoodType] = useState<FoodType>(post.foodType);
+  const [editLocation, setEditLocation] = useState(post.locationName);
+  const [editDietaryTags, setEditDietaryTags] = useState<DietaryTag[]>(post.dietaryTags ?? []);
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
+  const [extendMinutes, setExtendMinutes] = useState(0);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const editImageInputRef = useRef<HTMLInputElement>(null);
+
+  // Address search state for edit
+  const [addressQuery, setAddressQuery] = useState("");
+  const [addressSuggestions, setAddressSuggestions] = useState<AddressSuggestion[]>([]);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [showAddressSuggestions, setShowAddressSuggestions] = useState(false);
+  const debouncedAddressQuery = useDebounce(addressQuery, 400);
+  const addressInputRef = useRef<HTMLInputElement>(null);
+
   // Mutations
   const markGone = useMutation(api.food.markGone);
   const reportGone = useMutation(api.food.reportGone);
   const addReview = useMutation(api.reviews.addReview);
   const generateReviewUploadUrl = useMutation(api.reviews.generateUploadUrl);
+  const updatePost = useMutation(api.food.update);
+  const generateUploadUrl = useMutation(api.food.generateUploadUrl);
   
   // Queries
   const currentUser = useQuery(api.users.getCurrent);
@@ -144,6 +201,53 @@ export function FoodCard({ post, onClick }: FoodCardProps) {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Address search effect
+  useEffect(() => {
+    const searchAddress = async () => {
+      if (!debouncedAddressQuery.trim() || debouncedAddressQuery.length < 3) {
+        setAddressSuggestions([]);
+        setShowAddressSuggestions(false);
+        return;
+      }
+      
+      setIsSearchingAddress(true);
+      try {
+        // Search near the current post location for more relevant results
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?` +
+          `format=json&q=${encodeURIComponent(debouncedAddressQuery)}` +
+          `&viewbox=${post.longitude - 0.1},${post.latitude + 0.1},${post.longitude + 0.1},${post.latitude - 0.1}` +
+          `&bounded=0&limit=5`,
+          {
+            headers: {
+              'Accept': 'application/json',
+            },
+          }
+        );
+        const data: AddressSuggestion[] = await response.json();
+        setAddressSuggestions(data);
+        setShowAddressSuggestions(data.length > 0);
+      } catch (error) {
+        console.error("Geocoding error:", error);
+        setAddressSuggestions([]);
+      } finally {
+        setIsSearchingAddress(false);
+      }
+    };
+    
+    searchAddress();
+  }, [debouncedAddressQuery, post.latitude, post.longitude]);
+
+  // Handle selecting an address suggestion
+  const handleSelectAddress = (suggestion: AddressSuggestion) => {
+    const lat = parseFloat(suggestion.lat);
+    const lng = parseFloat(suggestion.lon);
+    setSelectedCoords({ lat, lng });
+    setAddressQuery(suggestion.display_name);
+    setShowAddressSuggestions(false);
+    setAddressSuggestions([]);
+  };
 
   const config = foodTypeConfig[post.foodType];
   const FoodIcon = config.icon;
@@ -254,6 +358,108 @@ export function FoodCard({ post, onClick }: FoodCardProps) {
       toast.error("Failed to submit review");
     } finally {
       setIsSubmittingReview(false);
+    }
+  };
+
+  // Edit handlers
+  const handleOpenEditDialog = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Reset form to current values
+    setEditTitle(post.title);
+    setEditDescription(post.description ?? "");
+    setEditFoodType(post.foodType);
+    setEditLocation(post.locationName);
+    setEditDietaryTags(post.dietaryTags ?? []);
+    setEditImageFile(null);
+    setEditImagePreview(null);
+    setExtendMinutes(0);
+    // Reset address search state
+    setAddressQuery("");
+    setAddressSuggestions([]);
+    setSelectedCoords(null);
+    setShowAddressSuggestions(false);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Please select an image file");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image must be less than 5MB");
+        return;
+      }
+      setEditImageFile(file);
+      setEditImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemoveEditImage = () => {
+    setEditImageFile(null);
+    setEditImagePreview(null);
+    if (editImageInputRef.current) {
+      editImageInputRef.current.value = "";
+    }
+  };
+
+  const toggleDietaryTag = (tag: DietaryTag) => {
+    setEditDietaryTags(prev =>
+      prev.includes(tag)
+        ? prev.filter(t => t !== tag)
+        : [...prev, tag]
+    );
+  };
+
+  const handleUpdatePost = async () => {
+    if (!editTitle.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+    if (!editLocation.trim()) {
+      toast.error("Location is required");
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      let imageId: Id<"_storage"> | undefined = undefined;
+
+      // Upload new image if selected
+      if (editImageFile) {
+        const uploadUrl = await generateUploadUrl();
+        const result = await fetch(uploadUrl, {
+          method: "POST",
+          headers: { "Content-Type": editImageFile.type },
+          body: editImageFile,
+        });
+        const { storageId } = await result.json();
+        imageId = storageId;
+      }
+
+      await updatePost({
+        postId: post._id,
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        foodType: editFoodType,
+        locationName: editLocation.trim(),
+        dietaryTags: editDietaryTags.length > 0 ? editDietaryTags : undefined,
+        imageId,
+        extendMinutes: extendMinutes > 0 ? extendMinutes : undefined,
+        // Include new coordinates if address was changed
+        latitude: selectedCoords?.lat,
+        longitude: selectedCoords?.lng,
+      });
+
+      toast.success("Post updated successfully!");
+      setEditDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to update post:", error);
+      toast.error("Failed to update post");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -368,6 +574,16 @@ export function FoodCard({ post, onClick }: FoodCardProps) {
                 <span>{post.goneReports} {post.goneReports === 1 ? "report" : "reports"}</span>
               </div>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleOpenEditDialog}
+              disabled={isExpired}
+              className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-coral-500"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -628,6 +844,263 @@ export function FoodCard({ post, onClick }: FoodCardProps) {
               className="w-full"
             >
               Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Post Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-coral-500" />
+              Edit Post
+            </DialogTitle>
+            <DialogDescription>
+              Update your food post details
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Title */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-title">Title *</Label>
+              <Input
+                id="edit-title"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="What food are you sharing?"
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Add details about the food..."
+                className="min-h-[80px] resize-none"
+              />
+            </div>
+
+            {/* Food Type */}
+            <div className="space-y-2">
+              <Label>Food Type</Label>
+              <Select value={editFoodType} onValueChange={(v) => setEditFoodType(v as FoodType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pizza">🍕 Pizza</SelectItem>
+                  <SelectItem value="sandwiches">🥪 Sandwiches</SelectItem>
+                  <SelectItem value="snacks">🍿 Snacks</SelectItem>
+                  <SelectItem value="drinks">🥤 Drinks</SelectItem>
+                  <SelectItem value="desserts">🍰 Desserts</SelectItem>
+                  <SelectItem value="asian">🍜 Asian</SelectItem>
+                  <SelectItem value="mexican">🌮 Mexican</SelectItem>
+                  <SelectItem value="other">🍽️ Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Address Search */}
+            <div className="space-y-2">
+              <Label>Change Map Location</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  ref={addressInputRef}
+                  placeholder="Search for a new address..."
+                  value={addressQuery}
+                  onChange={(e) => {
+                    setAddressQuery(e.target.value);
+                    if (!e.target.value) {
+                      setSelectedCoords(null);
+                    }
+                  }}
+                  onFocus={() => {
+                    if (addressSuggestions.length > 0) {
+                      setShowAddressSuggestions(true);
+                    }
+                  }}
+                  className="pl-10 pr-10"
+                />
+                {isSearchingAddress && (
+                  <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                )}
+                {selectedCoords && !isSearchingAddress && (
+                  <CheckCircle2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-green-500" />
+                )}
+                
+                {/* Suggestions Dropdown */}
+                {showAddressSuggestions && addressSuggestions.length > 0 && (
+                  <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border/50 bg-background shadow-lg">
+                    {addressSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion.place_id}
+                        type="button"
+                        onClick={() => handleSelectAddress(suggestion)}
+                        className="flex w-full items-start gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-secondary/50"
+                      >
+                        <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-coral-500" />
+                        <span className="line-clamp-2">{suggestion.display_name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {selectedCoords && (
+                <p className="flex items-center gap-1 text-xs text-green-500">
+                  <CheckCircle2 className="h-3 w-3" />
+                  New location: {selectedCoords.lat.toFixed(5)}, {selectedCoords.lng.toFixed(5)}
+                </p>
+              )}
+              {!selectedCoords && (
+                <p className="text-xs text-muted-foreground">
+                  Leave empty to keep the current map pin location
+                </p>
+              )}
+            </div>
+
+            {/* Location Description */}
+            <div className="space-y-2">
+              <Label htmlFor="edit-location">Location Description *</Label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="edit-location"
+                  value={editLocation}
+                  onChange={(e) => setEditLocation(e.target.value)}
+                  placeholder="e.g., Engineering Building Room 101"
+                  className="pl-10"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                A brief description to help others find the food
+              </p>
+            </div>
+
+            {/* Dietary Tags */}
+            <div className="space-y-2">
+              <Label>Dietary Tags</Label>
+              <div className="flex flex-wrap gap-2">
+                {(["vegetarian", "vegan", "halal", "kosher", "gluten-free", "dairy-free", "nut-free"] as DietaryTag[]).map((tag) => (
+                  <Button
+                    key={tag}
+                    type="button"
+                    variant={editDietaryTags.includes(tag) ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => toggleDietaryTag(tag)}
+                    className={editDietaryTags.includes(tag) ? "bg-coral-500 hover:bg-coral-600" : ""}
+                  >
+                    {dietaryTagConfig[tag].icon} {dietaryTagConfig[tag].label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Image */}
+            <div className="space-y-2">
+              <Label>Photo</Label>
+              {editImagePreview ? (
+                <div className="relative inline-block">
+                  <img
+                    src={editImagePreview}
+                    alt="New photo"
+                    className="h-24 w-24 rounded-lg object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveEditImage}
+                    className="absolute -right-2 -top-2 rounded-full bg-destructive p-1 text-white shadow-md hover:bg-destructive/90"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : post.imageUrl ? (
+                <div className="space-y-2">
+                  <img
+                    src={post.imageUrl}
+                    alt="Current photo"
+                    className="h-24 w-24 rounded-lg object-cover"
+                  />
+                  <p className="text-xs text-muted-foreground">Upload a new image to replace</p>
+                </div>
+              ) : null}
+              <div>
+                <Input
+                  ref={editImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleEditImageChange}
+                  className="hidden"
+                  id="edit-image-input"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => editImageInputRef.current?.click()}
+                  className="gap-2"
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  {post.imageUrl || editImagePreview ? "Change Photo" : "Add Photo"}
+                </Button>
+              </div>
+            </div>
+
+            {/* Extend Time */}
+            <div className="space-y-2">
+              <Label>Extend Availability</Label>
+              <div className="flex items-center gap-2">
+                <Select value={extendMinutes.toString()} onValueChange={(v) => setExtendMinutes(parseInt(v))}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Don't extend" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Don&apos;t extend</SelectItem>
+                    <SelectItem value="15">+15 minutes</SelectItem>
+                    <SelectItem value="30">+30 minutes</SelectItem>
+                    <SelectItem value="60">+1 hour</SelectItem>
+                    <SelectItem value="120">+2 hours</SelectItem>
+                  </SelectContent>
+                </Select>
+                {extendMinutes > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    <Plus className="inline h-3 w-3" /> {extendMinutes} min
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setEditDialogOpen(false)}
+              disabled={isUpdating}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdatePost}
+              disabled={isUpdating || !editTitle.trim() || !editLocation.trim()}
+              className="gap-2 bg-gradient-to-r from-coral-500 to-coral-600 text-white"
+            >
+              {isUpdating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Pencil className="h-4 w-4" />
+                  Save Changes
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
