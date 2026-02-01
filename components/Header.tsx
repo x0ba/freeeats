@@ -108,20 +108,31 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                 <ChevronDown className="h-4 w-4 opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[300px] p-0" align="center">
+            <PopoverContent className="w-[320px] p-0" align="center">
               <Command className="bg-transparent" shouldFilter={false}>
                 <div className="relative border-b border-border/50">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <CommandInput
-                    placeholder="Search your university..."
+                    placeholder="Type your university name..."
                     value={campusSearchTerm}
                     onValueChange={setCampusSearchTerm}
                     className="border-0 pl-9"
                   />
                 </div>
-                <CommandList className="max-h-[250px]">
-                  <CommandEmpty className="py-4 text-center text-sm text-muted-foreground">
-                    {campusSearchTerm ? "No universities found." : "Start typing to search..."}
+                <CommandList className="max-h-[300px]">
+                  <CommandEmpty className="py-6 text-center">
+                    {campusSearchTerm ? (
+                      <div className="text-sm text-muted-foreground">
+                        No universities found for &quot;{campusSearchTerm}&quot;
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">Search 380+ universities</p>
+                        <p className="text-xs text-muted-foreground">
+                          Start typing to find your school
+                        </p>
+                      </div>
+                    )}
                   </CommandEmpty>
                   <CommandGroup>
                     {searchedCampuses?.map((campus) => (

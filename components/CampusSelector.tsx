@@ -65,19 +65,30 @@ export function CampusSelector({ onCampusSelected }: CampusSelectorProps) {
 
         {/* Search & Select */}
         <div className="overflow-hidden rounded-2xl border border-border/50 bg-card/50 shadow-xl backdrop-blur-sm">
-          <Command className="bg-transparent">
+          <Command className="bg-transparent" shouldFilter={false}>
             <div className="relative border-b border-border/50">
               <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <CommandInput
-                placeholder="Search for your university..."
+                placeholder="Type your university name..."
                 value={searchTerm}
                 onValueChange={setSearchTerm}
                 className="border-0 pl-10 focus:ring-0"
               />
             </div>
-            <CommandList className="max-h-[300px]">
-              <CommandEmpty className="py-8 text-center text-muted-foreground">
-                No universities found.
+            <CommandList className="max-h-[350px]">
+              <CommandEmpty className="py-8 text-center">
+                {searchTerm ? (
+                  <div className="text-muted-foreground">
+                    No universities found for &quot;{searchTerm}&quot;
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="font-medium">Search 380+ universities</p>
+                    <p className="text-sm text-muted-foreground">
+                      Start typing to find your school
+                    </p>
+                  </div>
+                )}
               </CommandEmpty>
               <CommandGroup>
                 {campuses?.map((campus) => (
