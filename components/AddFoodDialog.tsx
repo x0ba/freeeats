@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -100,7 +101,7 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
   const fileInputRef = useRef<HTMLInputElement>(null);
   const addressInputRef = useRef<HTMLInputElement>(null);
 
-  const createPost = useMutation(api.food.create);
+  const createPost = useAction(api.food.create);
   const generateUploadUrl = useMutation(api.food.generateUploadUrl);
   
   // Geocoding search effect
@@ -233,8 +234,34 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
 
       resetForm();
       onOpenChange(false);
-    } catch (error) {
-      console.error("Failed to create post:", error);
+      toast.success("Food shared successfully! 🎉");
+    } catch (error: unknown) {
+      // Extract error message from various error formats (Convex wraps errors)
+      let errorMessage = "Failed to create post. Please try again.";
+      
+      if (error instanceof Error) {
+        // Try to extract the actual error message from Convex error formats
+        const uncaughtMatch = error.message.match(/Uncaught Error: (.+)/);
+        const convexMatch = error.message.match(/ConvexError: (.+)/);
+        
+        if (uncaughtMatch) {
+          errorMessage = uncaughtMatch[1];
+        } else if (convexMatch) {
+          errorMessage = convexMatch[1];
+        } else {
+          errorMessage = error.message;
+        }
+      } else if (typeof error === "object" && error !== null && "data" in error) {
+        // ConvexError format with data
+        errorMessage = String((error as { data: unknown }).data);
+      } else if (typeof error === "object" && error !== null && "message" in error) {
+        errorMessage = String((error as { message: unknown }).message);
+      }
+      
+      toast.error(errorMessage, {
+        duration: 8000,
+        description: "Please make sure your post is about food.",
+      });
     } finally {
       setIsSubmitting(false);
     }
