@@ -1,5 +1,7 @@
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
+import { query, mutation, internalMutation, action } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
 
 const foodTypeValidator = v.union(
   v.literal("pizza"),
@@ -12,8 +14,18 @@ const foodTypeValidator = v.union(
   v.literal("other")
 );
 
-// Create a new food post
-export const create = mutation({
+const dietaryTagsValidator = v.optional(v.array(v.union(
+  v.literal("vegetarian"),
+  v.literal("vegan"),
+  v.literal("halal"),
+  v.literal("kosher"),
+  v.literal("gluten-free"),
+  v.literal("dairy-free"),
+  v.literal("nut-free")
+)));
+
+// Internal mutation to create a food post (called after moderation)
+export const createInternal = internalMutation({
   args: {
     title: v.string(),
     description: v.optional(v.string()),
@@ -24,23 +36,13 @@ export const create = mutation({
     longitude: v.number(),
     durationMinutes: v.number(),
     imageId: v.optional(v.id("_storage")),
-    dietaryTags: v.optional(v.array(v.union(
-      v.literal("vegetarian"),
-      v.literal("vegan"),
-      v.literal("halal"),
-      v.literal("kosher"),
-      v.literal("gluten-free"),
-      v.literal("dairy-free"),
-      v.literal("nut-free")
-    ))),
+    dietaryTags: dietaryTagsValidator,
+    clerkId: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
     const user = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .first();
 
     if (!user) throw new Error("User not found");
@@ -60,6 +62,65 @@ export const create = mutation({
       createdBy: user._id,
       isActive: true,
       dietaryTags: args.dietaryTags,
+    });
+
+    return postId;
+  },
+});
+
+// Public action to create a food post with AI moderation
+export const create = action({
+  args: {
+    title: v.string(),
+    description: v.optional(v.string()),
+    foodType: foodTypeValidator,
+    campusId: v.id("campuses"),
+    locationName: v.string(),
+    latitude: v.number(),
+    longitude: v.number(),
+    durationMinutes: v.number(),
+    imageId: v.optional(v.id("_storage")),
+    dietaryTags: dietaryTagsValidator,
+  },
+  returns: v.id("foodPosts"),
+  handler: async (ctx, args): Promise<Id<"foodPosts">> => {
+    // Get current user identity
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    // Get image URL if present for moderation
+    let imageUrl: string | undefined;
+    if (args.imageId) {
+      imageUrl = await ctx.storage.getUrl(args.imageId) ?? undefined;
+    }
+
+    // Run spam filter moderation
+    const moderationResult = await ctx.runAction(internal.spamFilter.moderateContent, {
+      title: args.title,
+      description: args.description,
+      imageUrl,
+    });
+
+    if (!moderationResult.isValid) {
+      throw new Error(
+        moderationResult.reason ||
+          "This post doesn't appear to be about food. Please share food-related content only."
+      );
+    }
+
+    // Create the post via internal mutation
+    const postId: Id<"foodPosts"> = await ctx.runMutation(internal.food.createInternal, {
+      title: args.title,
+      description: args.description,
+      foodType: args.foodType,
+      campusId: args.campusId,
+      locationName: args.locationName,
+      latitude: args.latitude,
+      longitude: args.longitude,
+      durationMinutes: args.durationMinutes,
+      imageId: args.imageId,
+      dietaryTags: args.dietaryTags,
+      clerkId: identity.subject,
     });
 
     return postId;

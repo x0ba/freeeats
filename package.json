@@ -6,12 +6,15 @@
     "dev": "npm-run-all --parallel dev:frontend dev:backend",
     "dev:frontend": "next dev",
     "dev:backend": "convex dev",
-    "predev": "convex dev --until-success && convex dashboard",
+    "predev": "convex dev --until-success && convex run campuses:seed && convex dashboard",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "db:seed": "convex run campuses:seed",
+    "db:reseed": "convex run campuses:reseed"
   },
   "dependencies": {
+    "@ai-sdk/google": "^3.0.19",
     "@clerk/clerk-react": "^5.60.0",
     "@clerk/nextjs": "^6.37.1",
     "@radix-ui/react-avatar": "^1.1.11",
@@ -24,6 +27,7 @@
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-slot": "^1.2.4",
     "@types/leaflet": "^1.9.21",
+    "ai": "^6.0.66",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
