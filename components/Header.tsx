@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MapPin, Plus, ChevronDown, Utensils } from "lucide-react";
+import { MapPin, Plus, ChevronDown, Utensils, Bell, Flag, Check } from "lucide-react";
 import { useEffect } from "react";
 import { Id } from "@/convex/_generated/dataModel";
 
@@ -29,6 +29,16 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
   );
   const setCampus = useMutation(api.users.setCampus);
   const getOrCreate = useMutation(api.users.getOrCreate);
+  const notifications = useQuery(
+    api.notifications.getForCurrentUser,
+    isAuthenticated ? {} : "skip"
+  );
+  const unreadCount = useQuery(
+    api.notifications.getUnreadCount,
+    isAuthenticated ? {} : "skip"
+  );
+  const markAsRead = useMutation(api.notifications.markAsRead);
+  const markAllAsRead = useMutation(api.notifications.markAllAsRead);
 
   // Sync Clerk user to Convex on load
   useEffect(() => {
@@ -92,6 +102,80 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
         <div className="flex items-center gap-3">
           {isAuthenticated ? (
             <>
+              {/* Notifications */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative"
+                  >
+                    <Bell className="h-5 w-5" />
+                    {(unreadCount ?? 0) > 0 && (
+                      <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-coral-500 text-[10px] font-medium text-white">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-80">
+                  <div className="flex items-center justify-between border-b px-3 py-2">
+                    <span className="font-medium">Notifications</span>
+                    {(unreadCount ?? 0) > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => markAllAsRead({})}
+                        className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        <Check className="h-3 w-3" />
+                        Mark all read
+                      </Button>
+                    )}
+                  </div>
+                  <div className="max-h-80 overflow-auto">
+                    {notifications && notifications.length > 0 ? (
+                      notifications.map((notification) => (
+                        <DropdownMenuItem
+                          key={notification._id}
+                          onClick={() => {
+                            if (!notification.isRead) {
+                              markAsRead({ notificationId: notification._id });
+                            }
+                          }}
+                          className={`flex cursor-pointer flex-col items-start gap-1 p-3 ${
+                            !notification.isRead ? "bg-coral-500/5" : ""
+                          }`}
+                        >
+                          <div className="flex w-full items-start gap-2">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/20">
+                              <Flag className="h-4 w-4 text-amber-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium line-clamp-1">
+                                {notification.foodTitle}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {notification.reportCount}{" "}
+                                {notification.reportCount === 1 ? "person" : "people"}{" "}
+                                reported this food is gone
+                              </p>
+                            </div>
+                            {!notification.isRead && (
+                              <div className="h-2 w-2 shrink-0 rounded-full bg-coral-500" />
+                            )}
+                          </div>
+                        </DropdownMenuItem>
+                      ))
+                    ) : (
+                      <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                        No notifications yet
+                      </div>
+                    )}
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <Button
                 onClick={onAddFood}
                 className="gap-2 bg-gradient-to-r from-coral-500 to-coral-600 text-white shadow-lg shadow-coral-500/25 hover:from-coral-600 hover:to-coral-700"

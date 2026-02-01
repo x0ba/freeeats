@@ -4,11 +4,12 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Clock, MapPin, XCircle, Pizza, Coffee, Cookie, Sandwich, Salad, UtensilsCrossed } from "lucide-react";
+import { Clock, MapPin, Trash2, Flag, Undo2, Pizza, Coffee, Cookie, Sandwich, Salad, UtensilsCrossed } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { toast } from "sonner";
 
 type FoodType = "pizza" | "sandwiches" | "snacks" | "drinks" | "desserts" | "asian" | "mexican" | "other";
 
@@ -22,7 +23,10 @@ interface FoodPostData {
   expiresAt: number;
   timeRemaining: number;
   creator: { name: string; imageUrl?: string } | null;
+  createdBy: Id<"users">;
   _creationTime: number;
+  goneReports: number;
+  reportedBy: Id<"users">[];
 }
 
 interface FoodCardProps {
@@ -64,7 +68,16 @@ function formatTimeAgo(timestamp: number): string {
 export function FoodCard({ post, onClick }: FoodCardProps) {
   const [timeRemaining, setTimeRemaining] = useState(post.timeRemaining);
   const markGone = useMutation(api.food.markGone);
+  const reportGone = useMutation(api.food.reportGone);
+  const unreportGone = useMutation(api.food.unreportGone);
+  const currentUser = useQuery(api.users.getCurrent);
   const [isMarkingGone, setIsMarkingGone] = useState(false);
+  
+  // Check if the current user is the creator
+  const isCreator = currentUser?._id === post.createdBy;
+  
+  // Check if the current user has already reported this post
+  const hasReported = currentUser ? post.reportedBy.includes(currentUser._id) : false;
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -82,8 +95,38 @@ export function FoodCard({ post, onClick }: FoodCardProps) {
     setIsMarkingGone(true);
     try {
       await markGone({ postId: post._id });
+      toast.success("Food post deleted");
     } catch (error) {
-      console.error("Failed to mark as gone:", error);
+      console.error("Failed to delete:", error);
+      toast.error("Failed to delete food post");
+    } finally {
+      setIsMarkingGone(false);
+    }
+  };
+
+  const handleReportGone = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMarkingGone(true);
+    try {
+      await reportGone({ postId: post._id });
+      toast.success("Thanks for reporting! The poster has been notified.");
+    } catch (error) {
+      console.error("Failed to report:", error);
+      toast.error("Failed to report");
+    } finally {
+      setIsMarkingGone(false);
+    }
+  };
+
+  const handleUndoReport = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMarkingGone(true);
+    try {
+      await unreportGone({ postId: post._id });
+      toast.success("Report withdrawn");
+    } catch (error) {
+      console.error("Failed to undo report:", error);
+      toast.error("Failed to undo report");
     } finally {
       setIsMarkingGone(false);
     }
@@ -161,16 +204,62 @@ export function FoodCard({ post, onClick }: FoodCardProps) {
             {formatTimeAgo(post._creationTime)}
           </span>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleMarkGone}
-          disabled={isMarkingGone || isExpired}
-          className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-destructive"
-        >
-          <XCircle className="h-3.5 w-3.5" />
-          It&apos;s gone
-        </Button>
+        {isCreator ? (
+          <div className="flex items-center gap-2">
+            {post.goneReports > 0 && (
+              <div className="flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-1 text-[10px] text-amber-600">
+                <Flag className="h-3 w-3" />
+                <span>{post.goneReports} {post.goneReports === 1 ? "report" : "reports"}</span>
+              </div>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleMarkGone}
+              disabled={isMarkingGone || isExpired}
+              className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </Button>
+          </div>
+        ) : hasReported ? (
+          <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-1 text-[10px] text-amber-600">
+              <Flag className="h-3 w-3" />
+              <span>Reported</span>
+              {post.goneReports > 0 && (
+                <span className="font-medium">({post.goneReports})</span>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleUndoReport}
+              disabled={isMarkingGone || isExpired}
+              className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <Undo2 className="h-3 w-3" />
+              Undo
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleReportGone}
+            disabled={isMarkingGone || isExpired || !currentUser}
+            className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-amber-600"
+          >
+            <Flag className="h-3.5 w-3.5" />
+            Report Gone
+            {post.goneReports > 0 && (
+              <span className="ml-1 rounded-full bg-amber-500/20 px-1.5 text-[10px] text-amber-600">
+                {post.goneReports}
+              </span>
+            )}
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );

@@ -59,8 +59,27 @@ export default defineSchema({
       v.literal("nut-free")
     ))),
     markedGoneBy: v.optional(v.id("users")),
+    // Track reports from non-creators that the food is gone
+    goneReports: v.optional(v.number()),
+    // Track which users have reported (to prevent duplicate reports)
+    reportedBy: v.optional(v.array(v.id("users"))),
   })
     .index("by_campus", ["campusId", "isActive"])
     .index("by_creator", ["createdBy"])
     .index("by_expires", ["expiresAt"]),
+
+  // Notifications for users
+  notifications: defineTable({
+    userId: v.id("users"), // The user receiving the notification
+    type: v.union(
+      v.literal("food_reported_gone"),
+      v.literal("food_expired")
+    ),
+    foodPostId: v.id("foodPosts"),
+    foodTitle: v.string(),
+    reportCount: v.optional(v.number()),
+    isRead: v.boolean(),
+  })
+    .index("by_user", ["userId", "isRead"])
+    .index("by_user_and_post", ["userId", "foodPostId"]),
 });

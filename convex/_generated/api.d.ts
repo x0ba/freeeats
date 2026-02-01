@@ -10,6 +10,7 @@
 
 import type * as campuses from "../campuses.js";
 import type * as food from "../food.js";
+import type * as notifications from "../notifications.js";
 import type * as users from "../users.js";
 
 import type {
@@ -21,6 +22,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   campuses: typeof campuses;
   food: typeof food;
+  notifications: typeof notifications;
   users: typeof users;
 }>;
 
