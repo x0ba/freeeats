@@ -37,7 +37,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { MapPin, Plus, ChevronDown, Bell, Flag, Check, Search, Trash2, AlertTriangle, Loader2, Star } from "lucide-react";
+import { MapPin, Plus, ChevronDown, Bell, Flag, Check, Search, Trash2, AlertTriangle, Loader2, Star, Building2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
@@ -57,6 +57,7 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
   const [campusSearchTerm, setCampusSearchTerm] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [preferencesDialogOpen, setPreferencesDialogOpen] = useState(false);
+  const [mobileCampusSelectorOpen, setMobileCampusSelectorOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const prevCampusesRef = useRef<typeof searchedCampuses>(undefined);
@@ -69,7 +70,7 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
   // Use search query for campus selection (supports 380+ campuses efficiently)
   const searchedCampuses = useQuery(
     api.campuses.search,
-    campusSearchOpen ? { searchTerm: campusSearchTerm } : "skip"
+    campusSearchOpen || mobileCampusSelectorOpen ? { searchTerm: campusSearchTerm } : "skip"
   );
   const currentCampus = useQuery(
     api.campuses.get,
@@ -180,7 +181,7 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
           </div>
         </div>
 
-        {/* Campus Selector - Stamp Style */}
+        {/* Campus Selector - Stamp Style (hidden on mobile) */}
         {isAuthenticated && currentUser && (
           <Popover open={campusSearchOpen} onOpenChange={setCampusSearchOpen}>
             <PopoverTrigger asChild>
@@ -188,7 +189,7 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                 variant="outline"
                 role="combobox"
                 aria-expanded={campusSearchOpen}
-                className="gap-2 border-2 border-dashed border-primary/30 bg-card hover:bg-secondary hover:border-primary/50 rounded-sm"
+                className="hidden sm:flex gap-2 border-2 border-dashed border-primary/30 bg-card hover:bg-secondary hover:border-primary/50 rounded-sm"
               >
                 <MapPin className="h-4 w-4 text-primary" />
                 <span className="max-w-[150px] truncate font-medium">
@@ -354,6 +355,12 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                 }}
               >
                 <UserButton.MenuItems>
+                  {/* Show campus change option only on mobile */}
+                  <UserButton.Action
+                    label={currentCampus?.name ?? "Select Campus"}
+                    labelIcon={<Building2 className="h-4 w-4" />}
+                    onClick={() => setMobileCampusSelectorOpen(true)}
+                  />
                   <UserButton.Action
                     label="Food Preferences"
                     labelIcon={<Star className="h-4 w-4" />}
@@ -477,6 +484,87 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                       )}
                     </Button>
                   </ResponsiveDialogFooter>
+                </ResponsiveDialogContent>
+              </ResponsiveDialog>
+
+              {/* Mobile Campus Selector Dialog */}
+              <ResponsiveDialog open={mobileCampusSelectorOpen} onOpenChange={setMobileCampusSelectorOpen}>
+                <ResponsiveDialogContent className="sm:max-w-md border-2 rounded-sm">
+                  <ResponsiveDialogHeader>
+                    <ResponsiveDialogTitle className="font-display text-xl">Change Campus</ResponsiveDialogTitle>
+                    <ResponsiveDialogDescription>
+                      Search for your university
+                    </ResponsiveDialogDescription>
+                  </ResponsiveDialogHeader>
+
+                  <Command className="bg-transparent" shouldFilter={false}>
+                    <div className="relative border-2 border-border rounded-sm mb-4">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <CommandInput
+                        placeholder="Type your university name..."
+                        value={campusSearchTerm}
+                        onValueChange={setCampusSearchTerm}
+                        className="border-0 pl-9"
+                      />
+                    </div>
+                    <CommandList className="max-h-[50vh] border-2 border-border rounded-sm">
+                      <CommandEmpty className="py-6 text-center">
+                        {!isSearching && (
+                          campusSearchTerm ? (
+                            <div className="text-sm text-muted-foreground">
+                              No universities found for &quot;{campusSearchTerm}&quot;
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <p className="text-sm font-medium font-display">Search 380+ universities</p>
+                              <p className="text-xs text-muted-foreground">
+                                Start typing to find your school
+                              </p>
+                            </div>
+                          )
+                        )}
+                      </CommandEmpty>
+                      <CommandGroup>
+                        {displayCampuses?.map((campus) => (
+                          <CommandItem
+                            key={campus._id}
+                            value={campus.name}
+                            onSelect={() => {
+                              handleCampusChange(campus._id);
+                              setMobileCampusSelectorOpen(false);
+                              setCampusSearchTerm("");
+                            }}
+                            className={`cursor-pointer px-3 py-2 hover:bg-primary/10 hover:text-primary ${
+                              currentUser?.campusId === campus._id
+                                ? "bg-primary/10 text-primary"
+                                : ""
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <MapPin className={`h-4 w-4 ${
+                                currentUser?.campusId === campus._id
+                                  ? "text-primary"
+                                  : "text-muted-foreground"
+                              }`} />
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">{campus.name}</span>
+                                <span className={`text-xs ${
+                                  currentUser?.campusId === campus._id
+                                    ? "text-primary/70"
+                                    : "text-muted-foreground"
+                                }`}>
+                                  {campus.city}, {campus.state}
+                                </span>
+                              </div>
+                              {currentUser?.campusId === campus._id && (
+                                <Check className="ml-auto h-4 w-4 text-primary" />
+                              )}
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
                 </ResponsiveDialogContent>
               </ResponsiveDialog>
             </>

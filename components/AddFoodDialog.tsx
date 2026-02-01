@@ -240,7 +240,7 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
 
   return (
     <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
-      <ResponsiveDialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px] border-2 border-border bg-card paper-shadow paper-rotate-1">
+      <ResponsiveDialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px] border-2 border-border bg-card paper-shadow">
         <ResponsiveDialogHeader className="pt-4">
           <ResponsiveDialogTitle className="flex items-center gap-2 font-display text-xl">
             <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-primary shadow-md">

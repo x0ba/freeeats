@@ -73,7 +73,7 @@ export function ResponsiveDialogContent({ className, children, ...props }: React
     return <DialogContent className={className} {...props}>{children}</DialogContent>
   }
   return (
-    <DrawerContent className={cn(className, "px-4 pb-4 w-full sm:max-w-full")} {...props}>
+    <DrawerContent className={cn("px-4 pb-4 w-full sm:max-w-full", className)} {...props}>
       {children}
     </DrawerContent>
   )

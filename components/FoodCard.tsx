@@ -688,7 +688,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
 
       {/* Review Dialog */}
       <ResponsiveDialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
-        <ResponsiveDialogContent className="sm:max-w-lg max-h-[85vh] overflow-hidden flex flex-col border-2 rounded-sm" onClick={(e) => e.stopPropagation()}>
+        <ResponsiveDialogContent className="sm:max-w-lg border-2 rounded-sm" onClick={(e) => e.stopPropagation()}>
           <ResponsiveDialogHeader>
             <ResponsiveDialogTitle className="flex items-center gap-2 font-display">
               <MessageSquare className="h-5 w-5 text-primary" />
@@ -705,7 +705,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
             </ResponsiveDialogDescription>
           </ResponsiveDialogHeader>
 
-          <div className="space-y-4 py-4 overflow-y-auto flex-1">
+          <div className="space-y-4 py-4 flex-1">
             {/* Rating form - only for logged-in non-creators */}
             {!isCreator && currentUser && (
               <>
