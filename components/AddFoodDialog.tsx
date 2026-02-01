@@ -236,20 +236,37 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
       onOpenChange(false);
       toast.success("Food shared successfully! 🎉");
     } catch (error: unknown) {
-      // Extract error message from various error formats (Convex wraps errors)
-      let errorMessage = "Failed to create post. Please try again.";
+      // Extract user-friendly error message from Convex error formats
+      // Convex action errors look like: "[CONVEX A(food:create)] [Request ID: xxx] Server Error...\n\nActual message"
+      let errorMessage = "Please make sure your post is about food.";
       
       if (error instanceof Error) {
-        // Try to extract the actual error message from Convex error formats
-        const uncaughtMatch = error.message.match(/Uncaught Error: (.+)/);
-        const convexMatch = error.message.match(/ConvexError: (.+)/);
+        const rawMessage = error.message;
         
-        if (uncaughtMatch) {
-          errorMessage = uncaughtMatch[1];
-        } else if (convexMatch) {
-          errorMessage = convexMatch[1];
+        // If the message contains the Convex header format, extract the actual message after it
+        // Pattern: [CONVEX ...] [Request ID: ...] ... followed by the actual error
+        if (rawMessage.includes("[CONVEX")) {
+          // The actual error message is typically after double newlines or after "Uncaught Error:"
+          const uncaughtMatch = rawMessage.match(/Uncaught Error:\s*([\s\S]+?)(?:\s*at\s|$)/);
+          if (uncaughtMatch) {
+            errorMessage = uncaughtMatch[1].trim();
+          } else {
+            // Try to find text after the Request ID block
+            const lines = rawMessage.split("\n").filter(line => line.trim());
+            // Find lines that don't start with [ (skip the header lines)
+            const contentLines = lines.filter(line => !line.trim().startsWith("["));
+            if (contentLines.length > 0) {
+              errorMessage = contentLines.join(" ").trim();
+            }
+          }
         } else {
-          errorMessage = error.message;
+          // Standard error formats
+          const convexMatch = rawMessage.match(/ConvexError:\s*(.+)/);
+          if (convexMatch) {
+            errorMessage = convexMatch[1].trim();
+          } else {
+            errorMessage = rawMessage;
+          }
         }
       } else if (typeof error === "object" && error !== null && "data" in error) {
         // ConvexError format with data
@@ -258,9 +275,9 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
         errorMessage = String((error as { message: unknown }).message);
       }
       
-      toast.error(errorMessage, {
-        duration: 8000,
-        description: "Please make sure your post is about food.",
+      toast.error("Couldn't share your post", {
+        duration: 6000,
+        description: errorMessage,
       });
     } finally {
       setIsSubmitting(false);
