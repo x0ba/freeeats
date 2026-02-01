@@ -175,6 +175,17 @@ const cuisinePreferencesValidator = v.object({
   other: v.optional(v.number()),
 });
 
+// Dietary restriction validator
+const dietaryTagValidator = v.union(
+  v.literal("vegetarian"),
+  v.literal("vegan"),
+  v.literal("halal"),
+  v.literal("kosher"),
+  v.literal("gluten-free"),
+  v.literal("dairy-free"),
+  v.literal("nut-free")
+);
+
 // Set user's cuisine preferences (used during signup and in settings)
 export const setCuisinePreferences = mutation({
   args: {
@@ -217,11 +228,12 @@ export const getCuisinePreferences = query({
   },
 });
 
-// Complete onboarding (after campus and cuisine preferences are set)
+// Complete onboarding (after campus, cuisine preferences, and dietary restrictions are set)
 export const completeOnboarding = mutation({
   args: {
     campusId: v.id("campuses"),
     preferences: cuisinePreferencesValidator,
+    dietaryRestrictions: v.optional(v.array(dietaryTagValidator)),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -237,7 +249,50 @@ export const completeOnboarding = mutation({
     await ctx.db.patch(user._id, {
       campusId: args.campusId,
       cuisinePreferences: args.preferences,
+      dietaryRestrictions: args.dietaryRestrictions,
       hasCompletedOnboarding: true,
+    });
+
+    return { success: true };
+  },
+});
+
+// Get user's dietary restrictions
+export const getDietaryRestrictions = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) return null;
+
+    return user.dietaryRestrictions ?? null;
+  },
+});
+
+// Set user's dietary restrictions (used in settings)
+export const setDietaryRestrictions = mutation({
+  args: {
+    dietaryRestrictions: v.array(dietaryTagValidator),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) throw new Error("User not found");
+
+    await ctx.db.patch(user._id, {
+      dietaryRestrictions: args.dietaryRestrictions,
     });
 
     return { success: true };

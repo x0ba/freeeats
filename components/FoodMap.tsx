@@ -62,16 +62,24 @@ const dietaryTagConfig: Record<DietaryTag, { icon: string; label: string }> = {
   "nut-free": { icon: "🥜", label: "Nut-Free" },
 };
 
-function createFoodMarker(foodType: FoodType, isExpiringSoon: boolean, isFavorite: boolean): DivIcon {
+
+
+function createFoodMarker(foodType: FoodType, isExpiringSoon: boolean, isFavorite: boolean, matchesDiet: boolean): DivIcon {
   const emoji = foodEmojis[foodType];
   const pulseClass = isExpiringSoon ? "animate-pulse" : "";
-  // Use gold/amber gradient for favorites, coral for regular
-  const bgGradient = isFavorite 
-    ? "linear-gradient(135deg, #F59E0B, #FBBF24)" 
-    : "linear-gradient(135deg, #FF6B6B, #FF8E8E)";
-  const shadowColor = isFavorite 
-    ? "rgba(245, 158, 11, 0.5)" 
-    : "rgba(255, 107, 107, 0.4)";
+  
+  // Emerald for diet match, Gold for favorite, Coral for regular
+  let bgGradient = "linear-gradient(135deg, #FF6B6B, #FF8E8E)";
+  let shadowColor = "rgba(255, 107, 107, 0.4)";
+  
+  if (matchesDiet) {
+    bgGradient = "linear-gradient(135deg, #10B981, #34D399)"; // Emerald
+    shadowColor = "rgba(16, 185, 129, 0.5)";
+  } else if (isFavorite) {
+    bgGradient = "linear-gradient(135deg, #F59E0B, #FBBF24)"; // Amber
+    shadowColor = "rgba(245, 158, 11, 0.5)";
+  }
+
   const favoriteHeart = isFavorite 
     ? `<div style="
         position: absolute;
@@ -88,7 +96,28 @@ function createFoodMarker(foodType: FoodType, isExpiringSoon: boolean, isFavorit
         border: 2px solid white;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         transform: rotate(45deg);
+        z-index: 10;
       "><span style="transform: rotate(-45deg);">❤️</span></div>`
+    : "";
+    
+  const dietBatch = matchesDiet
+    ? `<div style="
+        position: absolute;
+        top: -8px;
+        left: -8px;
+        width: 20px;
+        height: 20px;
+        background: linear-gradient(135deg, #10B981, #059669);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        border: 2px solid white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        transform: rotate(45deg);
+        z-index: 10;
+      "><span style="transform: rotate(-45deg);">✓</span></div>`
     : "";
   
   return new DivIcon({
@@ -109,6 +138,7 @@ function createFoodMarker(foodType: FoodType, isExpiringSoon: boolean, isFavorit
       ">
         <span style="transform: rotate(45deg);">${emoji}</span>
         ${favoriteHeart}
+        ${dietBatch}
       </div>
     `,
     iconSize: [40, 40],
@@ -190,6 +220,7 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const cuisinePreferences = useQuery(api.users.getCuisinePreferences) as CuisinePreferences | null | undefined;
+  const dietaryRestrictions = useQuery(api.users.getDietaryRestrictions);
 
   // Check if a food type is a "favorite" (rated 4+ by user)
   const isFavorite = (foodType: FoodType): boolean => {
@@ -251,11 +282,18 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
     return posts.map((post) => {
       const isExpiringSoon = post.timeRemaining < 1800000; // 30 minutes
       const postIsFavorite = isFavorite(post.foodType);
-      const marker = createFoodMarker(post.foodType, isExpiringSoon, postIsFavorite);
-      return { post, marker, isFavorite: postIsFavorite };
+      
+      let matchesDiet = false;
+      if (dietaryRestrictions && dietaryRestrictions.length > 0) {
+        // Post must contain ALL of the user's restrictions
+        matchesDiet = dietaryRestrictions.every(tag => post.dietaryTags && post.dietaryTags.includes(tag as DietaryTag));
+      }
+
+      const marker = createFoodMarker(post.foodType, isExpiringSoon, postIsFavorite, matchesDiet);
+      return { post, marker, isFavorite: postIsFavorite, matchesDiet };
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [posts, cuisinePreferences]);
+  }, [posts, cuisinePreferences, dietaryRestrictions]);
 
   const userLocationMarker = useMemo(() => createUserLocationMarker(), []);
 
@@ -309,13 +347,13 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
           </>
         )}
         
-        {markers.map(({ post, marker, isFavorite: postIsFavorite }) => (
+        {markers.map(({ post, marker, isFavorite: postIsFavorite, matchesDiet }) => (
           <Marker
             key={post._id}
             position={[post.latitude, post.longitude]}
             icon={marker}
             eventHandlers={{
-              click: () => onMarkerClick?.(post),
+              click: () => onMarkerClick?.(post), // Pass match info? No, click handler takes post
             }}
           >
             <Popup className="food-popup">
@@ -329,12 +367,19 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
                 )}
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="font-outfit text-base font-semibold">{post.title}</h3>
-                  {postIsFavorite && (
-                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-coral-500 to-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
-                      <Heart className="h-2.5 w-2.5 fill-current" />
-                      Fave
-                    </span>
-                  )}
+                  <div className="flex flex-col gap-1 items-end">
+                    {matchesDiet && (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                        ✓ Match
+                      </span>
+                    )}
+                    {postIsFavorite && (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-coral-500 to-amber-500 px-2 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+                        <Heart className="h-2.5 w-2.5 fill-current" />
+                        Fave
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
                   <MapPin className="h-3 w-3" />

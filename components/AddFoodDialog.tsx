@@ -6,13 +6,13 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -243,19 +243,19 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 font-outfit text-xl">
+    <ResponsiveDialog open={open} onOpenChange={onOpenChange}>
+      <ResponsiveDialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle className="flex items-center gap-2 font-outfit text-xl">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-coral-500 to-coral-600">
               <Utensils className="h-4 w-4 text-white" />
             </div>
             Share Free Food
-          </DialogTitle>
-          <DialogDescription>
+          </ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
             Help fellow students find free food on campus!
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Image Upload */}
@@ -490,7 +490,7 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
             />
           </div>
 
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button
               type="button"
               variant="outline"
@@ -516,9 +516,9 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
                 </>
               )}
             </Button>
-          </DialogFooter>
+          </ResponsiveDialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }

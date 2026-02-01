@@ -24,18 +24,25 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { MapPin, Plus, ChevronDown, Utensils, Bell, Flag, Check, Search, Trash2, AlertTriangle, Loader2, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
 import { CuisinePreferencesEditor, CuisinePreferences } from "./CuisinePreferences";
+import { DietaryRestrictionsSelector, DietaryTag } from "./DietaryRestrictionsSelector";
 
 interface HeaderProps {
   onAddFood: () => void;
@@ -54,6 +61,8 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
   const deleteAccount = useMutation(api.users.deleteAccount);
   const cuisinePreferences = useQuery(api.users.getCuisinePreferences, isAuthenticated ? {} : "skip");
   const setCuisinePreferences = useMutation(api.users.setCuisinePreferences);
+  const dietaryRestrictions = useQuery(api.users.getDietaryRestrictions, isAuthenticated ? {} : "skip");
+  const setDietaryRestrictions = useMutation(api.users.setDietaryRestrictions);
   
   // Use search query for campus selection (supports 380+ campuses efficiently)
   const searchedCampuses = useQuery(
@@ -114,11 +123,21 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
   const handleSavePreferences = async (preferences: CuisinePreferences) => {
     try {
       await setCuisinePreferences({ preferences });
-      toast.success("Food preferences updated!");
-      setPreferencesDialogOpen(false);
+      toast.success("Cuisine preferences updated!");
+      // Don't close dialog yet - let user update diet too if they want
     } catch (error) {
-      console.error("Failed to save preferences:", error);
+      console.error("Failed to save cuisine preferences:", error);
       toast.error("Failed to save preferences. Please try again.");
+    }
+  };
+
+  const handleSaveDietaryRestrictions = async (restrictions: DietaryTag[]) => {
+    try {
+      await setDietaryRestrictions({ dietaryRestrictions: restrictions });
+      toast.success("Dietary restrictions updated!");
+    } catch (error) {
+      console.error("Failed to save dietary restrictions:", error);
+      toast.error("Failed to save dietary restrictions. Please try again.");
     }
   };
 
@@ -320,36 +339,73 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
               </UserButton>
 
               {/* Food Preferences Dialog */}
-              <Dialog open={preferencesDialogOpen} onOpenChange={setPreferencesDialogOpen}>
-                <DialogContent className="sm:max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Food Preferences</DialogTitle>
-                    <DialogDescription>
-                      Rate cuisines to see your favorites first in the feed
-                    </DialogDescription>
-                  </DialogHeader>
-                  <CuisinePreferencesEditor
-                    initialPreferences={cuisinePreferences as CuisinePreferences | null}
-                    onSave={handleSavePreferences}
-                    submitLabel="Save Preferences"
-                    isCompact={true}
-                  />
-                </DialogContent>
-              </Dialog>
+              <ResponsiveDialog open={preferencesDialogOpen} onOpenChange={setPreferencesDialogOpen}>
+                <ResponsiveDialogContent className="sm:max-w-2xl">
+                  <ResponsiveDialogHeader>
+                    <ResponsiveDialogTitle>Food Preferences</ResponsiveDialogTitle>
+                    <ResponsiveDialogDescription>
+                      Customize your feed and dietary requirements
+                    </ResponsiveDialogDescription>
+                  </ResponsiveDialogHeader>
+
+                  <Tabs defaultValue="cuisine" className="w-full mt-4">
+                    <TabsList className="grid w-full grid-cols-2 mb-4">
+                      <TabsTrigger value="cuisine">Cuisines</TabsTrigger>
+                      <TabsTrigger value="dietary">Dietary</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="cuisine">
+                      <div className="space-y-3 max-h-[50vh] overflow-y-auto p-2">
+                        <div className="text-sm text-muted-foreground">
+                          Rate cuisines to see your favorites first in the feed.
+                        </div>
+                        <CuisinePreferencesEditor
+                          initialPreferences={cuisinePreferences as CuisinePreferences | null}
+                          onSave={handleSavePreferences}
+                          submitLabel="Save Preferences"
+                          isCompact={true}
+                        />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="dietary">
+                      <div className="space-y-3 max-h-[50vh] overflow-y-auto p-2">
+                        <div className="text-sm text-muted-foreground">
+                           Select any restrictions to highlight matching foods.
+                        </div>
+                        <DietaryRestrictionsSelector
+                          initialRestrictions={dietaryRestrictions}
+                          onSave={handleSaveDietaryRestrictions}
+                          submitLabel="Save Restrictions"
+                          isCompact={true}
+                          // For preferences modal, we don't want to skip, just save
+                          showSkip={false} 
+                        />
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                  
+                  <div className="mt-2 flex justify-end border-t border-border/50 pt-4">
+                    <Button variant="outline" onClick={() => setPreferencesDialogOpen(false)}>
+                      Done
+                    </Button>
+                  </div>
+                </ResponsiveDialogContent>
+              </ResponsiveDialog>
 
               {/* Delete Account Confirmation Dialog */}
-              <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
+              <ResponsiveDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <ResponsiveDialogContent className="sm:max-w-md">
+                  <ResponsiveDialogHeader>
                     <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
                       <AlertTriangle className="h-6 w-6 text-destructive" />
                     </div>
-                    <DialogTitle className="text-center">Delete Account</DialogTitle>
-                    <DialogDescription className="text-center">
+                    <ResponsiveDialogTitle className="text-center">Delete Account</ResponsiveDialogTitle>
+                    <ResponsiveDialogDescription className="text-center">
                       This action cannot be undone. This will permanently delete your
                       account and remove all your data including:
-                    </DialogDescription>
-                  </DialogHeader>
+                    </ResponsiveDialogDescription>
+                  </ResponsiveDialogHeader>
                   <div className="space-y-2 rounded-lg bg-muted/50 p-4 text-sm">
                     <p className="flex items-center gap-2">
                       <span className="text-muted-foreground">•</span>
@@ -364,7 +420,7 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                       All your notifications
                     </p>
                   </div>
-                  <DialogFooter className="gap-2 sm:gap-0">
+                  <ResponsiveDialogFooter className="gap-2 sm:gap-0">
                     <Button
                       variant="outline"
                       onClick={() => setDeleteDialogOpen(false)}
@@ -390,9 +446,9 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                         </>
                       )}
                     </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                  </ResponsiveDialogFooter>
+                </ResponsiveDialogContent>
+              </ResponsiveDialog>
             </>
           ) : (
             <div className="flex gap-2">

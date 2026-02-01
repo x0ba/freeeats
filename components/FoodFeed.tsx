@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Id } from "@/convex/_generated/dataModel";
 import { Pizza, Sandwich, Cookie, Coffee, UtensilsCrossed, Salad } from "lucide-react";
 import { useState } from "react";
+import { DietaryTag } from "./DietaryRestrictionsSelector";
 
 type FoodType = "pizza" | "sandwiches" | "snacks" | "drinks" | "desserts" | "asian" | "mexican" | "other";
 
@@ -30,6 +31,7 @@ export function FoodFeed({ campusId }: FoodFeedProps) {
   const [filter, setFilter] = useState<FoodType | "all">("all");
   const posts = useQuery(api.food.listByCampus, { campusId });
   const cuisinePreferences = useQuery(api.users.getCuisinePreferences);
+  const dietaryRestrictions = useQuery(api.users.getDietaryRestrictions);
 
   // Check if a food type is a "favorite" (rated 4+ by user)
   const isFavorite = (foodType: FoodType): boolean => {
@@ -98,9 +100,20 @@ export function FoodFeed({ campusId }: FoodFeedProps) {
       {/* Posts Grid */}
       {filteredPosts && filteredPosts.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredPosts.map((post) => (
-            <FoodCard key={post._id} post={post} isFavorite={isFavorite(post.foodType)} />
-          ))}
+          {filteredPosts.map((post) => {
+            const matchesDiet = dietaryRestrictions && dietaryRestrictions.length > 0
+              ? dietaryRestrictions.every(tag => post.dietaryTags?.includes(tag as DietaryTag))
+              : false;
+              
+            return (
+              <FoodCard 
+                key={post._id} 
+                post={post} 
+                isFavorite={isFavorite(post.foodType)} 
+                matchesDiet={matchesDiet}
+              />
+            );
+          })}
         </div>
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-center">

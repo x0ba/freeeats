@@ -5,13 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -82,6 +82,7 @@ interface FoodCardProps {
   post: FoodPostData;
   onClick?: () => void;
   isFavorite?: boolean;
+  matchesDiet?: boolean;
 }
 
 const foodTypeConfig: Record<FoodType, { icon: typeof Pizza; color: string; label: string }> = {
@@ -125,7 +126,7 @@ function formatTimeAgo(timestamp: number): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-export function FoodCard({ post, onClick, isFavorite = false }: FoodCardProps) {
+export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = false }: FoodCardProps) {
   const [timeRemaining, setTimeRemaining] = useState(post.timeRemaining);
   const [isMarkingGone, setIsMarkingGone] = useState(false);
   
@@ -467,7 +468,11 @@ export function FoodCard({ post, onClick, isFavorite = false }: FoodCardProps) {
   return (
     <Card
       onClick={onClick}
-      className={`group cursor-pointer overflow-hidden border-border/50 bg-card/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-coral-500/5 ${isExpired ? "opacity-60" : ""}`}
+      className={`group cursor-pointer overflow-hidden backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+        matchesDiet 
+          ? "border-emerald-500 bg-emerald-500/5 shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 ring-1 ring-emerald-500/30" 
+          : "border-border/50 bg-card/50 hover:shadow-coral-500/5"
+      } ${isExpired ? "opacity-60" : ""}`}
     >
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-secondary to-muted">
@@ -506,6 +511,12 @@ export function FoodCard({ post, onClick, isFavorite = false }: FoodCardProps) {
             <FoodIcon className="h-3 w-3" />
             {config.label}
           </Badge>
+          {matchesDiet && (
+            <Badge className="gap-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25 border-none">
+              <CheckCircle2 className="h-3 w-3" />
+              Match
+            </Badge>
+          )}
           {isFavorite && (
             <Badge className="gap-1 bg-gradient-to-r from-coral-500 to-amber-500 text-white shadow-lg shadow-coral-500/25">
               <Heart className="h-3 w-3 fill-current" />
@@ -628,14 +639,14 @@ export function FoodCard({ post, onClick, isFavorite = false }: FoodCardProps) {
       </CardFooter>
 
       {/* Review Dialog */}
-      <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+      <ResponsiveDialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
+        <ResponsiveDialogContent className="sm:max-w-lg max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-coral-500" />
               {isCreator ? "Reviews" : userReview ? "Edit Your Review" : "Rate This Food"}
-            </DialogTitle>
-            <DialogDescription>
+            </ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               {post.title}
               {(post.reviewCount ?? 0) > 0 && (
                 <span className="ml-2 inline-flex items-center gap-1">
@@ -643,8 +654,8 @@ export function FoodCard({ post, onClick, isFavorite = false }: FoodCardProps) {
                   {post.averageRating?.toFixed(1)} ({post.reviewCount} {post.reviewCount === 1 ? "review" : "reviews"})
                 </span>
               )}
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
 
           <div className="space-y-4 py-4 overflow-y-auto flex-1">
             {/* Rating form - only for logged-in non-creators */}
@@ -844,7 +855,7 @@ export function FoodCard({ post, onClick, isFavorite = false }: FoodCardProps) {
             </div>
           </div>
 
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button
               variant="outline"
               onClick={() => setReviewDialogOpen(false)}
@@ -852,22 +863,22 @@ export function FoodCard({ post, onClick, isFavorite = false }: FoodCardProps) {
             >
               Close
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
 
       {/* Edit Post Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+      <ResponsiveDialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <ResponsiveDialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle className="flex items-center gap-2">
               <Pencil className="h-5 w-5 text-coral-500" />
               Edit Post
-            </DialogTitle>
-            <DialogDescription>
+            </ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>
               Update your food post details
-            </DialogDescription>
-          </DialogHeader>
+            </ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
 
           <div className="space-y-4 py-4">
             {/* Title */}
@@ -1084,7 +1095,7 @@ export function FoodCard({ post, onClick, isFavorite = false }: FoodCardProps) {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
+          <ResponsiveDialogFooter className="gap-2">
             <Button
               variant="outline"
               onClick={() => setEditDialogOpen(false)}
@@ -1109,9 +1120,9 @@ export function FoodCard({ post, onClick, isFavorite = false }: FoodCardProps) {
                 </>
               )}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </Card>
   );
 }

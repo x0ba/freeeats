@@ -27,6 +27,17 @@ const cuisinePreferencesValidator = v.optional(
   })
 );
 
+// Dietary restriction validator - shared between users and foodPosts
+const dietaryTagValidator = v.union(
+  v.literal("vegetarian"),
+  v.literal("vegan"),
+  v.literal("halal"),
+  v.literal("kosher"),
+  v.literal("gluten-free"),
+  v.literal("dairy-free"),
+  v.literal("nut-free")
+);
+
 export default defineSchema({
   // Campus data - seeded with major US universities
   campuses: defineTable({
@@ -47,6 +58,7 @@ export default defineSchema({
     imageUrl: v.optional(v.string()),
     campusId: v.optional(v.id("campuses")),
     cuisinePreferences: cuisinePreferencesValidator,
+    dietaryRestrictions: v.optional(v.array(dietaryTagValidator)),
     hasCompletedOnboarding: v.optional(v.boolean()),
   }).index("by_clerk_id", ["clerkId"]),
 
@@ -54,16 +66,7 @@ export default defineSchema({
   foodPosts: defineTable({
     title: v.string(),
     description: v.optional(v.string()),
-    foodType: v.union(
-      v.literal("pizza"),
-      v.literal("sandwiches"),
-      v.literal("snacks"),
-      v.literal("drinks"),
-      v.literal("desserts"),
-      v.literal("asian"),
-      v.literal("mexican"),
-      v.literal("other")
-    ),
+    foodType: foodTypeValidator,
     // Location info
     campusId: v.id("campuses"),
     locationName: v.string(), // e.g., "Engineering Building Room 101"
@@ -77,15 +80,7 @@ export default defineSchema({
     createdBy: v.id("users"),
     // Status
     isActive: v.boolean(),
-    dietaryTags: v.optional(v.array(v.union(
-      v.literal("vegetarian"),
-      v.literal("vegan"),
-      v.literal("halal"),
-      v.literal("kosher"),
-      v.literal("gluten-free"),
-      v.literal("dairy-free"),
-      v.literal("nut-free")
-    ))),
+    dietaryTags: v.optional(v.array(dietaryTagValidator)),
     markedGoneBy: v.optional(v.id("users")),
     // Track reports from non-creators that the food is gone
     goneReports: v.optional(v.number()),

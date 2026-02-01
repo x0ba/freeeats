@@ -82,7 +82,7 @@ export function CuisinePreferencesEditor({
 
   return (
     <div className={isCompact ? "space-y-4" : "space-y-6"}>
-      <div className={`grid gap-3 ${isCompact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"}`}>
+      <div className={`grid ${isCompact ? "gap-2 grid-cols-3 sm:grid-cols-4" : "gap-3 grid-cols-2 sm:grid-cols-4"}`}>
         {CUISINES.map((cuisine) => {
           const rating = preferences[cuisine.id] ?? 3;
           const isHighlyRated = rating >= 4;
@@ -104,9 +104,9 @@ export function CuisinePreferencesEditor({
                   ★
                 </div>
               )}
-              <CardContent className={isCompact ? "p-3" : "p-4"}>
+              <CardContent className={isCompact ? "p-2" : "p-4"}>
                 <div className="flex flex-col items-center gap-2">
-                  <span className={`transition-transform duration-300 ${isHighlyRated ? "scale-110" : ""} ${isCompact ? "text-2xl" : "text-3xl"}`}>
+                  <span className={`transition-transform duration-300 ${isHighlyRated ? "scale-110" : ""} ${isCompact ? "text-xl" : "text-3xl"}`}>
                     {cuisine.emoji}
                   </span>
                   <span className={`font-medium transition-colors ${isHighlyRated ? "text-coral-600 dark:text-coral-400" : ""} ${isCompact ? "text-xs" : "text-sm"}`}>
@@ -120,7 +120,7 @@ export function CuisinePreferencesEditor({
                         className="p-0.5 transition-transform hover:scale-110"
                       >
                         <Star
-                          className={`${isCompact ? "h-4 w-4" : "h-5 w-5"} transition-colors ${
+                          className={`${isCompact ? "h-3.5 w-3.5" : "h-5 w-5"} transition-colors ${
                             star <= rating
                               ? "fill-amber-400 text-amber-400"
                               : "text-muted-foreground/30"
