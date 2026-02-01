@@ -11,7 +11,7 @@ import { api } from "@/convex/_generated/api";
 import "leaflet/dist/leaflet.css";
 
 type FoodType = "pizza" | "sandwiches" | "snacks" | "drinks" | "desserts" | "asian" | "mexican" | "other";
-type DietaryTag = "vegetarian" | "vegan" | "halal" | "kosher" | "gluten-free" | "dairy-free" | "nut-free";
+type DietaryTag = "vegetarian" | "vegan" | "halal" | "kosher" | "gluten-free" | "dairy-free" | "nut-free" | "no-beef";
 
 interface FoodPost {
   _id: Id<"foodPosts">;
@@ -72,6 +72,7 @@ const dietaryTagConfig: Record<DietaryTag, { icon: string; label: string }> = {
   "gluten-free": { icon: "🌾", label: "Gluten-Free" },
   "dairy-free": { icon: "🥛", label: "Dairy-Free" },
   "nut-free": { icon: "🥜", label: "Nut-Free" },
+  "no-beef": { icon: "🐄", label: "No Beef" },
 };
 
 
@@ -653,16 +654,20 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
                 </div>
                 {post.dietaryTags && post.dietaryTags.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
-                    {post.dietaryTags.map((tag) => (
-                      <Badge
-                        key={tag}
-                        className="bg-secondary text-secondary-foreground text-xs rounded-sm border border-border"
-                        title={dietaryTagConfig[tag].label}
-                      >
-                        <span className="mr-0.5">{dietaryTagConfig[tag].icon}</span>
-                        <span>{dietaryTagConfig[tag].label}</span>
-                      </Badge>
-                    ))}
+                    {post.dietaryTags.map((tag) => {
+                      const config = dietaryTagConfig[tag as DietaryTag];
+                      if (!config) return null;
+                      return (
+                        <Badge
+                          key={tag}
+                          className="bg-secondary text-secondary-foreground text-xs rounded-sm border border-border"
+                          title={config.label}
+                        >
+                          <span className="mr-0.5">{config.icon}</span>
+                          <span>{config.label}</span>
+                        </Badge>
+                      );
+                    })}
                   </div>
                 )}
               </div>

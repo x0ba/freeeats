@@ -225,7 +225,7 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
         longitude: selectedCoords?.lng ?? campusCenter[1] + (Math.random() - 0.5) * 0.002,
         durationMinutes: parseInt(duration),
         imageId,
-        dietaryTags: dietaryTags.length > 0 ? dietaryTags as ("vegetarian" | "vegan" | "halal" | "kosher" | "gluten-free" | "dairy-free" | "nut-free")[] : undefined,
+        dietaryTags: dietaryTags.length > 0 ? dietaryTags as ("vegetarian" | "vegan" | "halal" | "kosher" | "gluten-free" | "dairy-free" | "nut-free" | "no-beef")[] : undefined,
       });
 
       resetForm();
@@ -455,6 +455,7 @@ export function AddFoodDialog({ open, onOpenChange, campusId, campusCenter }: Ad
                 { id: "gluten-free", label: "Gluten-Free", icon: "🌾" },
                 { id: "dairy-free", label: "Dairy-Free", icon: "🥛" },
                 { id: "nut-free", label: "Nut-Free", icon: "🥜" },
+                { id: "no-beef", label: "No Beef", icon: "🐄" },
               ].map((tag) => {
                 const isSelected = dietaryTags.includes(tag.id);
                 return (

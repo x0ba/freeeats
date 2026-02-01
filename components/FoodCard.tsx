@@ -31,7 +31,7 @@ import { toast } from "sonner";
 
 type FoodType = "pizza" | "sandwiches" | "snacks" | "drinks" | "desserts" | "asian" | "mexican" | "other";
 
-type DietaryTag = "vegetarian" | "vegan" | "halal" | "kosher" | "gluten-free" | "dairy-free" | "nut-free";
+type DietaryTag = "vegetarian" | "vegan" | "halal" | "kosher" | "gluten-free" | "dairy-free" | "nut-free" | "no-beef";
 
 interface FoodPostData {
   _id: Id<"foodPosts">;
@@ -85,13 +85,26 @@ interface FoodCardProps {
   matchesDiet?: boolean;
   index?: number;
   distance?: number; // Distance in meters from user
+  useImperial?: boolean; // Use imperial (miles/feet) or metric (km/m)
 }
 
-// Format distance for display
-function formatDistance(meters: number): string {
-  if (meters < 100) return `${Math.round(meters)}m away`;
-  if (meters < 1000) return `${Math.round(meters / 10) * 10}m away`;
-  return `${(meters / 1000).toFixed(1)}km away`;
+// Format distance for display (supports imperial and metric)
+function formatDistance(meters: number, useImperial: boolean = true): string {
+  if (useImperial) {
+    // Convert to feet/miles
+    const feet = meters * 3.28084;
+    const miles = meters / 1609.344;
+    
+    if (feet < 500) return `${Math.round(feet)} ft`;
+    if (miles < 0.1) return `${Math.round(feet / 10) * 10} ft`;
+    if (miles < 10) return `${miles.toFixed(1)} mi`;
+    return `${Math.round(miles)} mi`;
+  } else {
+    // Metric (meters/km)
+    if (meters < 100) return `${Math.round(meters)} m`;
+    if (meters < 1000) return `${Math.round(meters / 10) * 10} m`;
+    return `${(meters / 1000).toFixed(1)} km`;
+  }
 }
 
 const foodTypeConfig: Record<FoodType, { icon: typeof Pizza; color: string; label: string; emoji: string }> = {
@@ -113,6 +126,7 @@ const dietaryTagConfig: Record<DietaryTag, { icon: string; label: string }> = {
   "gluten-free": { icon: "🌾", label: "Gluten-Free" },
   "dairy-free": { icon: "🥛", label: "Dairy-Free" },
   "nut-free": { icon: "🥜", label: "Nut-Free" },
+  "no-beef": { icon: "🐄", label: "No Beef" },
 };
 
 function formatTimeRemaining(ms: number): string {
@@ -142,7 +156,7 @@ function getRotationClass(id: string): string {
   return rotations[hash % rotations.length];
 }
 
-export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = false, index = 0, distance }: FoodCardProps) {
+export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = false, index = 0, distance, useImperial = true }: FoodCardProps) {
   const [timeRemaining, setTimeRemaining] = useState(post.timeRemaining);
   const [isMarkingGone, setIsMarkingGone] = useState(false);
 
@@ -577,16 +591,20 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
         )}
         {post.dietaryTags && post.dietaryTags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
-            {post.dietaryTags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center gap-0.5 rounded-sm bg-secondary px-2 py-0.5 text-xs border border-border"
-                title={dietaryTagConfig[tag].label}
-              >
-                <span>{dietaryTagConfig[tag].icon}</span>
-                <span className="hidden sm:inline">{dietaryTagConfig[tag].label}</span>
-              </span>
-            ))}
+            {post.dietaryTags.map((tag) => {
+              const config = dietaryTagConfig[tag as DietaryTag];
+              if (!config) return null;
+              return (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-0.5 rounded-sm bg-secondary px-2 py-0.5 text-xs border border-border"
+                  title={config.label}
+                >
+                  <span>{config.icon}</span>
+                  <span className="hidden sm:inline">{config.label}</span>
+                </span>
+              );
+            })}
           </div>
         )}
         <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
@@ -596,7 +614,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
           </div>
           {distance !== undefined && (
             <span className="shrink-0 text-xs px-2 py-0.5 rounded-sm bg-secondary border border-border">
-              {formatDistance(distance)}
+              {formatDistance(distance, useImperial)}
             </span>
           )}
         </div>
@@ -1036,7 +1054,7 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
             <div className="space-y-2">
               <Label>Dietary Tags</Label>
               <div className="flex flex-wrap gap-2">
-                {(["vegetarian", "vegan", "halal", "kosher", "gluten-free", "dairy-free", "nut-free"] as DietaryTag[]).map((tag) => (
+                {(["vegetarian", "vegan", "halal", "kosher", "gluten-free", "dairy-free", "nut-free", "no-beef"] as DietaryTag[]).map((tag) => (
                   <Button
                     key={tag}
                     type="button"

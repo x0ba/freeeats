@@ -21,7 +21,8 @@ const dietaryTagsValidator = v.optional(v.array(v.union(
   v.literal("kosher"),
   v.literal("gluten-free"),
   v.literal("dairy-free"),
-  v.literal("nut-free")
+  v.literal("nut-free"),
+  v.literal("no-beef")
 )));
 
 // Internal mutation to create a food post (called after moderation)
@@ -207,9 +208,11 @@ export const listByCampus = query({
     // 1. Rating difference >= 1 star: higher rated food first
     // 2. Rating difference < 1 star: use user's cuisine preference
     // 3. Otherwise: sort by creation time (newest first)
+    // NOTE: Posts with no reviews are treated as 2.5 stars for sorting purposes
     return enrichedPosts.sort((a, b) => {
-      const ratingA = a.averageRating ?? 0;
-      const ratingB = b.averageRating ?? 0;
+      // Treat unrated posts (0 reviews) as 2.5 stars for sorting
+      const ratingA = (a.reviewCount ?? 0) > 0 ? (a.averageRating ?? 2.5) : 2.5;
+      const ratingB = (b.reviewCount ?? 0) > 0 ? (b.averageRating ?? 2.5) : 2.5;
       const ratingDiff = Math.abs(ratingA - ratingB);
       
       // Priority 1: If rating difference is >= 1 star, higher rating wins

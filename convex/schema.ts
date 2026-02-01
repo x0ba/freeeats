@@ -35,7 +35,8 @@ const dietaryTagValidator = v.union(
   v.literal("kosher"),
   v.literal("gluten-free"),
   v.literal("dairy-free"),
-  v.literal("nut-free")
+  v.literal("nut-free"),
+  v.literal("no-beef")
 );
 
 export default defineSchema({

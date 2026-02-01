@@ -14,9 +14,10 @@ const DIETARY_RESTRICTIONS = [
   { id: "gluten-free", label: "Gluten-Free", emoji: "🌾", description: "No gluten" },
   { id: "dairy-free", label: "Dairy-Free", emoji: "🥛", description: "No dairy" },
   { id: "nut-free", label: "Nut-Free", emoji: "🥜", description: "No nuts" },
+  { id: "no-beef", label: "No Beef", emoji: "🐄", description: "No beef or cow products" },
 ] as const;
 
-export type DietaryTag = "vegetarian" | "vegan" | "halal" | "kosher" | "gluten-free" | "dairy-free" | "nut-free";
+export type DietaryTag = "vegetarian" | "vegan" | "halal" | "kosher" | "gluten-free" | "dairy-free" | "nut-free" | "no-beef";
 
 interface DietaryRestrictionsSelectorProps {
   initialRestrictions?: DietaryTag[] | null;

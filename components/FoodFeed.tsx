@@ -5,10 +5,14 @@ import { api } from "@/convex/_generated/api";
 import { FoodCard } from "./FoodCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Id } from "@/convex/_generated/dataModel";
 import { Pizza, Sandwich, Cookie, Coffee, UtensilsCrossed, Salad } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { DietaryTag } from "./DietaryRestrictionsSelector";
+
+// Max distance in meters (20 miles = 32186.88 meters)
+const MAX_DISTANCE_METERS = 32186.88;
 
 // Calculate distance between two points in meters (Haversine formula)
 function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -45,6 +49,7 @@ const filterOptions: { value: FoodType | "all"; label: string; icon: typeof Pizz
 export function FoodFeed({ campusId }: FoodFeedProps) {
   const [filter, setFilter] = useState<FoodType | "all">("all");
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [useImperial, setUseImperial] = useState(true); // Default to imperial (miles/feet)
   
   const posts = useQuery(api.food.listByCampus, { campusId });
   const cuisinePreferences = useQuery(api.users.getCuisinePreferences);
@@ -86,14 +91,19 @@ export function FoodFeed({ campusId }: FoodFeedProps) {
     return typeof rating === "number" && rating >= 4;
   };
 
-  // Compute filtered and sorted posts with distance
+  // Get effective rating for sorting (unrated posts = 2.5)
+  const getEffectiveRating = (post: { averageRating?: number; reviewCount?: number }): number => {
+    return (post.reviewCount ?? 0) > 0 ? (post.averageRating ?? 2.5) : 2.5;
+  };
+
+  // Compute filtered and sorted posts
   const sortedAndFilteredPosts = useMemo(() => {
     if (!posts) return undefined;
 
     // Apply food type filter
     const filtered = filter === "all" ? posts : posts.filter((post) => post.foodType === filter);
 
-    // Add distance and sort by distance if user location is available
+    // Add distance info
     const postsWithDistance = filtered.map((post) => {
       const distance = userLocation
         ? getDistanceMeters(userLocation.lat, userLocation.lng, post.latitude, post.longitude)
@@ -101,15 +111,41 @@ export function FoodFeed({ campusId }: FoodFeedProps) {
       return { ...post, distance };
     });
 
-    // Sort by distance (closest first), then by the existing sort (creation time)
-    return postsWithDistance.sort((a, b) => {
-      if (a.distance !== null && b.distance !== null) {
-        return a.distance - b.distance; // Closer first
+    // Filter out posts more than 20 miles away (only if user location is available)
+    const nearbyPosts = userLocation
+      ? postsWithDistance.filter((post) => post.distance === null || post.distance <= MAX_DISTANCE_METERS)
+      : postsWithDistance;
+
+    // Sort with priority: 1) Rating, 2) Favorite (if rating diff <= 1), 3) Distance
+    return nearbyPosts.sort((a, b) => {
+      const ratingA = getEffectiveRating(a);
+      const ratingB = getEffectiveRating(b);
+      const ratingDiff = Math.abs(ratingA - ratingB);
+
+      // Priority 1: If rating difference > 1 star, higher rating wins
+      if (ratingDiff > 1) {
+        return ratingB - ratingA; // Higher rating first
       }
-      // If no distance available, maintain original order
-      return 0;
+
+      // Priority 2: If rating difference <= 1 star, check favorites
+      const aIsFavorite = isFavorite(a.foodType);
+      const bIsFavorite = isFavorite(b.foodType);
+      if (aIsFavorite !== bIsFavorite) {
+        return aIsFavorite ? -1 : 1; // Favorites first
+      }
+
+      // Priority 3: Sort by distance (closer first)
+      if (a.distance !== null && b.distance !== null) {
+        return a.distance - b.distance;
+      }
+      // If one has distance and the other doesn't, prefer the one with distance
+      if (a.distance !== null) return -1;
+      if (b.distance !== null) return 1;
+
+      // Final fallback: newer posts first
+      return b._creationTime - a._creationTime;
     });
-  }, [posts, filter, userLocation]);
+  }, [posts, filter, userLocation, cuisinePreferences]);
 
   if (posts === undefined) {
     return (
@@ -169,6 +205,21 @@ export function FoodFeed({ campusId }: FoodFeedProps) {
         })}
       </div>
 
+      {/* Distance unit toggle */}
+      {userLocation && (
+        <div className="flex items-center justify-end gap-2">
+          <span className="text-xs text-muted-foreground">Distance:</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setUseImperial(!useImperial)}
+            className="h-6 px-2 text-xs rounded-sm border"
+          >
+            {useImperial ? "mi" : "km"}
+          </Button>
+        </div>
+      )}
+
       {/* Masonry Grid */}
       {sortedAndFilteredPosts && sortedAndFilteredPosts.length > 0 ? (
         <div className="masonry-grid">
@@ -189,6 +240,7 @@ export function FoodFeed({ campusId }: FoodFeedProps) {
                   matchesDiet={matchesDiet}
                   index={index}
                   distance={post.distance ?? undefined}
+                  useImperial={useImperial}
                 />
               </div>
             );
