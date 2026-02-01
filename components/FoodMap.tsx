@@ -155,6 +155,26 @@ function MapRecenter({ center }: { center: [number, number] }) {
 
 export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "" }: FoodMapProps) {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number; accuracy: number } | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
+  // Track theme changes
+  useEffect(() => {
+    const checkTheme = () => {
+      setIsDarkMode(document.documentElement.classList.contains("dark"));
+    };
+    
+    // Initial check
+    checkTheme();
+    
+    // Watch for class changes on html element
+    const observer = new MutationObserver(checkTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    
+    return () => observer.disconnect();
+  }, []);
   
   // Get user's location
   useEffect(() => {
@@ -196,17 +216,23 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
 
   const userLocationMarker = useMemo(() => createUserLocationMarker(), []);
 
+  // Tile layer URLs for light/dark modes (CartoDB Positron/Dark Matter)
+  const tileUrl = isDarkMode
+    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+
   return (
     <div className={`relative overflow-hidden rounded-xl ${className}`}>
       <MapContainer
         center={center}
         zoom={zoom}
         className="h-full w-full"
-        style={{ background: "#1a1a2e" }}
+        style={{ background: isDarkMode ? "#1a1a2e" : "#f5f5f0" }}
       >
         <TileLayer
+          key={isDarkMode ? "dark" : "light"}
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          url={tileUrl}
         />
         <MapRecenter center={center} />
         

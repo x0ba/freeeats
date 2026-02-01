@@ -45,13 +45,32 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+// Inline script to detect system theme preference before hydration
+// This prevents flash of wrong theme (FOUC) and listens for changes
+function ThemeScript() {
+  const script = `
+    (function() {
+      try {
+        const mq = window.matchMedia('(prefers-color-scheme: dark)');
+        const setTheme = (e) => document.documentElement.classList.toggle('dark', e.matches);
+        setTheme(mq);
+        mq.addEventListener('change', setTheme);
+      } catch (e) {}
+    })();
+  `;
+  return <script dangerouslySetInnerHTML={{ __html: script }} />;
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <ThemeScript />
+      </head>
       <body
         className={`${outfit.variable} ${dmSans.variable} font-sans antialiased`}
       >
