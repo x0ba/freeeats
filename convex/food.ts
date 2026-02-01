@@ -291,6 +291,71 @@ export const markGone = mutation({
   },
 });
 
+// Update a food post (only the creator can update)
+export const update = mutation({
+  args: {
+    postId: v.id("foodPosts"),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    foodType: v.optional(foodTypeValidator),
+    locationName: v.optional(v.string()),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+    imageId: v.optional(v.id("_storage")),
+    dietaryTags: dietaryTagsValidator,
+    extendMinutes: v.optional(v.number()), // Extend expiration time
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) throw new Error("User not found");
+
+    const post = await ctx.db.get(args.postId);
+    if (!post) throw new Error("Post not found");
+
+    // Only the creator can update the food post
+    if (post.createdBy !== user._id) {
+      throw new Error("Only the creator can update this food post");
+    }
+
+    // Build the update object with only provided fields
+    const updates: Record<string, unknown> = {};
+    
+    if (args.title !== undefined) updates.title = args.title;
+    if (args.description !== undefined) updates.description = args.description;
+    if (args.foodType !== undefined) updates.foodType = args.foodType;
+    if (args.locationName !== undefined) updates.locationName = args.locationName;
+    if (args.latitude !== undefined) updates.latitude = args.latitude;
+    if (args.longitude !== undefined) updates.longitude = args.longitude;
+    if (args.dietaryTags !== undefined) updates.dietaryTags = args.dietaryTags;
+    
+    // Handle image update
+    if (args.imageId !== undefined) {
+      // Delete old image if it exists and is different
+      if (post.imageId && post.imageId !== args.imageId) {
+        await ctx.storage.delete(post.imageId);
+      }
+      updates.imageId = args.imageId;
+    }
+    
+    // Extend expiration time if requested
+    if (args.extendMinutes !== undefined && args.extendMinutes > 0) {
+      const newExpiresAt = Math.max(post.expiresAt, Date.now()) + args.extendMinutes * 60 * 1000;
+      updates.expiresAt = newExpiresAt;
+    }
+
+    await ctx.db.patch(args.postId, updates);
+
+    return { success: true };
+  },
+});
+
 // Report that food is gone (for non-creators)
 export const reportGone = mutation({
   args: {
