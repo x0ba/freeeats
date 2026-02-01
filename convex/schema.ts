@@ -1,6 +1,32 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+// Food type validator - reusable across schema
+const foodTypeValidator = v.union(
+  v.literal("pizza"),
+  v.literal("sandwiches"),
+  v.literal("snacks"),
+  v.literal("drinks"),
+  v.literal("desserts"),
+  v.literal("asian"),
+  v.literal("mexican"),
+  v.literal("other")
+);
+
+// Cuisine preference schema - stores user's 1-5 rating for each cuisine type
+const cuisinePreferencesValidator = v.optional(
+  v.object({
+    pizza: v.optional(v.number()),
+    sandwiches: v.optional(v.number()),
+    snacks: v.optional(v.number()),
+    drinks: v.optional(v.number()),
+    desserts: v.optional(v.number()),
+    asian: v.optional(v.number()),
+    mexican: v.optional(v.number()),
+    other: v.optional(v.number()),
+  })
+);
+
 export default defineSchema({
   // Campus data - seeded with major US universities
   campuses: defineTable({
@@ -20,6 +46,8 @@ export default defineSchema({
     email: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     campusId: v.optional(v.id("campuses")),
+    cuisinePreferences: cuisinePreferencesValidator,
+    hasCompletedOnboarding: v.optional(v.boolean()),
   }).index("by_clerk_id", ["clerkId"]),
 
   // Food posts created by users
@@ -82,4 +110,16 @@ export default defineSchema({
   })
     .index("by_user", ["userId", "isRead"])
     .index("by_user_and_post", ["userId", "foodPostId"]),
+
+  // Reviews/ratings for food posts (Yelp-like)
+  reviews: defineTable({
+    foodPostId: v.id("foodPosts"),
+    userId: v.id("users"),
+    rating: v.number(), // 1-5 stars
+    comment: v.optional(v.string()),
+    imageId: v.optional(v.id("_storage")), // Optional review photo
+  })
+    .index("by_food_post", ["foodPostId"])
+    .index("by_user", ["userId"])
+    .index("by_food_and_user", ["foodPostId", "userId"]),
 });

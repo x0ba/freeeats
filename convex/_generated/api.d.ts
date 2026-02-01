@@ -12,6 +12,7 @@ import type * as campusData from "../campusData.js";
 import type * as campuses from "../campuses.js";
 import type * as food from "../food.js";
 import type * as notifications from "../notifications.js";
+import type * as reviews from "../reviews.js";
 import type * as spamFilter from "../spamFilter.js";
 import type * as users from "../users.js";
 
@@ -26,6 +27,7 @@ declare const fullApi: ApiFromModules<{
   campuses: typeof campuses;
   food: typeof food;
   notifications: typeof notifications;
+  reviews: typeof reviews;
   spamFilter: typeof spamFilter;
   users: typeof users;
 }>;

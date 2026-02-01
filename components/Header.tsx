@@ -1,6 +1,6 @@
 "use client";
 
-import { UserButton, SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
+import { UserButton, SignInButton, SignUpButton, useUser, useClerk } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -23,9 +23,19 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { MapPin, Plus, ChevronDown, Utensils, Bell, Flag, Check, Search } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { MapPin, Plus, ChevronDown, Utensils, Bell, Flag, Check, Search, Trash2, AlertTriangle, Loader2, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Id } from "@/convex/_generated/dataModel";
+import { toast } from "sonner";
+import { CuisinePreferencesEditor, CuisinePreferences } from "./CuisinePreferences";
 
 interface HeaderProps {
   onAddFood: () => void;
@@ -34,9 +44,16 @@ interface HeaderProps {
 
 export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
   const { user: clerkUser, isLoaded } = useUser();
+  const { signOut } = useClerk();
   const currentUser = useQuery(api.users.getCurrent);
   const [campusSearchOpen, setCampusSearchOpen] = useState(false);
   const [campusSearchTerm, setCampusSearchTerm] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [preferencesDialogOpen, setPreferencesDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const deleteAccount = useMutation(api.users.deleteAccount);
+  const cuisinePreferences = useQuery(api.users.getCuisinePreferences, isAuthenticated ? {} : "skip");
+  const setCuisinePreferences = useMutation(api.users.setCuisinePreferences);
   
   // Use search query for campus selection (supports 380+ campuses efficiently)
   const searchedCampuses = useQuery(
@@ -76,6 +93,33 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
     await setCampus({ campusId });
     setCampusSearchOpen(false);
     setCampusSearchTerm("");
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteAccount({});
+      toast.success("Account deleted successfully");
+      // Sign out from Clerk after deleting Convex data
+      await signOut();
+    } catch (error) {
+      console.error("Failed to delete account:", error);
+      toast.error("Failed to delete account. Please try again.");
+    } finally {
+      setIsDeleting(false);
+      setDeleteDialogOpen(false);
+    }
+  };
+
+  const handleSavePreferences = async (preferences: CuisinePreferences) => {
+    try {
+      await setCuisinePreferences({ preferences });
+      toast.success("Food preferences updated!");
+      setPreferencesDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to save preferences:", error);
+      toast.error("Failed to save preferences. Please try again.");
+    }
   };
 
   return (
@@ -253,13 +297,102 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Add Food</span>
               </Button>
+
               <UserButton
                 appearance={{
                   elements: {
                     avatarBox: "h-9 w-9",
                   },
                 }}
-              />
+              >
+                <UserButton.MenuItems>
+                  <UserButton.Action
+                    label="Food Preferences"
+                    labelIcon={<Star className="h-4 w-4" />}
+                    onClick={() => setPreferencesDialogOpen(true)}
+                  />
+                  <UserButton.Action
+                    label="Delete Account"
+                    labelIcon={<Trash2 className="h-4 w-4" />}
+                    onClick={() => setDeleteDialogOpen(true)}
+                  />
+                </UserButton.MenuItems>
+              </UserButton>
+
+              {/* Food Preferences Dialog */}
+              <Dialog open={preferencesDialogOpen} onOpenChange={setPreferencesDialogOpen}>
+                <DialogContent className="sm:max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Food Preferences</DialogTitle>
+                    <DialogDescription>
+                      Rate cuisines to see your favorites first in the feed
+                    </DialogDescription>
+                  </DialogHeader>
+                  <CuisinePreferencesEditor
+                    initialPreferences={cuisinePreferences as CuisinePreferences | null}
+                    onSave={handleSavePreferences}
+                    submitLabel="Save Preferences"
+                    isCompact={true}
+                  />
+                </DialogContent>
+              </Dialog>
+
+              {/* Delete Account Confirmation Dialog */}
+              <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                      <AlertTriangle className="h-6 w-6 text-destructive" />
+                    </div>
+                    <DialogTitle className="text-center">Delete Account</DialogTitle>
+                    <DialogDescription className="text-center">
+                      This action cannot be undone. This will permanently delete your
+                      account and remove all your data including:
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-2 rounded-lg bg-muted/50 p-4 text-sm">
+                    <p className="flex items-center gap-2">
+                      <span className="text-muted-foreground">•</span>
+                      All your food posts
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <span className="text-muted-foreground">•</span>
+                      Your profile information
+                    </p>
+                    <p className="flex items-center gap-2">
+                      <span className="text-muted-foreground">•</span>
+                      All your notifications
+                    </p>
+                  </div>
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <Button
+                      variant="outline"
+                      onClick={() => setDeleteDialogOpen(false)}
+                      disabled={isDeleting}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={handleDeleteAccount}
+                      disabled={isDeleting}
+                      className="gap-2"
+                    >
+                      {isDeleting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="h-4 w-4" />
+                          Delete Account
+                        </>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </>
           ) : (
             <div className="flex gap-2">

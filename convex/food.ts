@@ -127,7 +127,7 @@ export const create = action({
   },
 });
 
-// Get active food posts for a campus
+// Get active food posts for a campus (sorted by user's cuisine preferences)
 export const listByCampus = query({
   args: {
     campusId: v.id("campuses"),
@@ -135,6 +135,19 @@ export const listByCampus = query({
   },
   handler: async (ctx, args) => {
     const now = Date.now();
+
+    // Get current user's cuisine preferences if logged in
+    let userPreferences: Record<string, number> | null = null;
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity) {
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+        .first();
+      if (user?.cuisinePreferences) {
+        userPreferences = user.cuisinePreferences as Record<string, number>;
+      }
+    }
 
     const posts = await ctx.db
       .query("foodPosts")
@@ -148,6 +161,22 @@ export const listByCampus = query({
       ? posts
       : posts.filter((p) => p.expiresAt > now);
 
+    // Get review stats for each post
+    const postReviewStats = new Map<string, { avg: number; count: number }>();
+    for (const post of activePosts) {
+      const reviews = await ctx.db
+        .query("reviews")
+        .withIndex("by_food_post", (q) => q.eq("foodPostId", post._id))
+        .collect();
+      
+      if (reviews.length > 0) {
+        const avg = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+        postReviewStats.set(post._id, { avg, count: reviews.length });
+      } else {
+        postReviewStats.set(post._id, { avg: 0, count: 0 });
+      }
+    }
+
     // Enrich with creator info and image URLs
     const enrichedPosts = await Promise.all(
       activePosts.map(async (post) => {
@@ -155,6 +184,8 @@ export const listByCampus = query({
         const imageUrl = post.imageId
           ? await ctx.storage.getUrl(post.imageId)
           : null;
+        
+        const stats = postReviewStats.get(post._id) ?? { avg: 0, count: 0 };
 
         return {
           ...post,
@@ -166,12 +197,39 @@ export const listByCampus = query({
           timeRemaining: post.expiresAt - now,
           goneReports: post.goneReports ?? 0,
           reportedBy: post.reportedBy ?? [],
+          averageRating: Math.round(stats.avg * 10) / 10,
+          reviewCount: stats.count,
         };
       })
     );
 
-    // Sort by creation time (newest first)
-    return enrichedPosts.sort((a, b) => b._creationTime - a._creationTime);
+    // Sort posts with new priority:
+    // 1. Rating difference >= 1 star: higher rated food first
+    // 2. Rating difference < 1 star: use user's cuisine preference
+    // 3. Otherwise: sort by creation time (newest first)
+    return enrichedPosts.sort((a, b) => {
+      const ratingA = a.averageRating ?? 0;
+      const ratingB = b.averageRating ?? 0;
+      const ratingDiff = Math.abs(ratingA - ratingB);
+      
+      // Priority 1: If rating difference is >= 1 star, higher rating wins
+      if (ratingDiff >= 1) {
+        return ratingB - ratingA; // Higher rating first
+      }
+      
+      // Priority 2: If rating difference < 1 star, use cuisine preference
+      if (userPreferences) {
+        const prefA = userPreferences[a.foodType] ?? 3; // Default to middle rating
+        const prefB = userPreferences[b.foodType] ?? 3;
+        
+        if (prefA !== prefB) {
+          return prefB - prefA; // Higher preference first
+        }
+      }
+      
+      // Priority 3: Tiebreaker - newer posts first
+      return b._creationTime - a._creationTime;
+    });
   },
 });
 
