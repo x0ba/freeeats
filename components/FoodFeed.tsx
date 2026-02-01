@@ -7,8 +7,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Id } from "@/convex/_generated/dataModel";
 import { Pizza, Sandwich, Cookie, Coffee, UtensilsCrossed, Salad } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DietaryTag } from "./DietaryRestrictionsSelector";
+
+// Calculate distance between two points in meters (Haversine formula)
+function getDistanceMeters(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371000; // Earth's radius in meters
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 type FoodType = "pizza" | "sandwiches" | "snacks" | "drinks" | "desserts" | "asian" | "mexican" | "other";
 
@@ -29,9 +44,40 @@ const filterOptions: { value: FoodType | "all"; label: string; icon: typeof Pizz
 
 export function FoodFeed({ campusId }: FoodFeedProps) {
   const [filter, setFilter] = useState<FoodType | "all">("all");
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  
   const posts = useQuery(api.food.listByCampus, { campusId });
   const cuisinePreferences = useQuery(api.users.getCuisinePreferences);
   const dietaryRestrictions = useQuery(api.users.getDietaryRestrictions);
+
+  // Get user's location
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      console.log("Geolocation is not supported by this browser.");
+      return;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+      },
+      (error) => {
+        console.log("Error getting location:", error.message);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 30000,
+      }
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
+  }, []);
 
   // Check if a food type is a "favorite" (rated 4+ by user)
   const isFavorite = (foodType: FoodType): boolean => {
@@ -40,9 +86,30 @@ export function FoodFeed({ campusId }: FoodFeedProps) {
     return typeof rating === "number" && rating >= 4;
   };
 
-  const filteredPosts = posts?.filter((post) =>
-    filter === "all" ? true : post.foodType === filter
-  );
+  // Compute filtered and sorted posts with distance
+  const sortedAndFilteredPosts = useMemo(() => {
+    if (!posts) return undefined;
+
+    // Apply food type filter
+    const filtered = filter === "all" ? posts : posts.filter((post) => post.foodType === filter);
+
+    // Add distance and sort by distance if user location is available
+    const postsWithDistance = filtered.map((post) => {
+      const distance = userLocation
+        ? getDistanceMeters(userLocation.lat, userLocation.lng, post.latitude, post.longitude)
+        : null;
+      return { ...post, distance };
+    });
+
+    // Sort by distance (closest first), then by the existing sort (creation time)
+    return postsWithDistance.sort((a, b) => {
+      if (a.distance !== null && b.distance !== null) {
+        return a.distance - b.distance; // Closer first
+      }
+      // If no distance available, maintain original order
+      return 0;
+    });
+  }, [posts, filter, userLocation]);
 
   if (posts === undefined) {
     return (
@@ -103,9 +170,9 @@ export function FoodFeed({ campusId }: FoodFeedProps) {
       </div>
 
       {/* Masonry Grid */}
-      {filteredPosts && filteredPosts.length > 0 ? (
+      {sortedAndFilteredPosts && sortedAndFilteredPosts.length > 0 ? (
         <div className="masonry-grid">
-          {filteredPosts.map((post, index) => {
+          {sortedAndFilteredPosts.map((post, index) => {
             const matchesDiet = dietaryRestrictions && dietaryRestrictions.length > 0
               ? dietaryRestrictions.every(tag => post.dietaryTags?.includes(tag as DietaryTag))
               : false;
@@ -121,6 +188,7 @@ export function FoodFeed({ campusId }: FoodFeedProps) {
                   isFavorite={isFavorite(post.foodType)}
                   matchesDiet={matchesDiet}
                   index={index}
+                  distance={post.distance ?? undefined}
                 />
               </div>
             );

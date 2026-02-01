@@ -145,7 +145,7 @@ export function CuisinePreferencesEditor({
         <Button
           onClick={handleSubmit}
           disabled={isSubmitting}
-          className="gap-2 bg-gradient-to-r from-coral-500 to-coral-600 text-white shadow-lg shadow-coral-500/25"
+          className="gap-2 bg-primary text-primary-foreground shadow-lg hover:bg-primary/90"
         >
           {isSubmitting ? (
             <>

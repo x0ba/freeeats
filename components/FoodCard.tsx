@@ -84,6 +84,14 @@ interface FoodCardProps {
   isFavorite?: boolean;
   matchesDiet?: boolean;
   index?: number;
+  distance?: number; // Distance in meters from user
+}
+
+// Format distance for display
+function formatDistance(meters: number): string {
+  if (meters < 100) return `${Math.round(meters)}m away`;
+  if (meters < 1000) return `${Math.round(meters / 10) * 10}m away`;
+  return `${(meters / 1000).toFixed(1)}km away`;
 }
 
 const foodTypeConfig: Record<FoodType, { icon: typeof Pizza; color: string; label: string; emoji: string }> = {
@@ -134,7 +142,7 @@ function getRotationClass(id: string): string {
   return rotations[hash % rotations.length];
 }
 
-export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = false, index = 0 }: FoodCardProps) {
+export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = false, index = 0, distance }: FoodCardProps) {
   const [timeRemaining, setTimeRemaining] = useState(post.timeRemaining);
   const [isMarkingGone, setIsMarkingGone] = useState(false);
 
@@ -581,9 +589,16 @@ export function FoodCard({ post, onClick, isFavorite = false, matchesDiet = fals
             ))}
           </div>
         )}
-        <div className="mt-3 flex items-center gap-1.5 text-sm text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5 text-primary" />
-          <span className="line-clamp-1">{post.locationName}</span>
+        <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <MapPin className="h-3.5 w-3.5 text-primary" />
+            <span className="line-clamp-1">{post.locationName}</span>
+          </div>
+          {distance !== undefined && (
+            <span className="shrink-0 text-xs px-2 py-0.5 rounded-sm bg-secondary border border-border">
+              {formatDistance(distance)}
+            </span>
+          )}
         </div>
       </CardContent>
 
