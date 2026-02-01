@@ -38,7 +38,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { MapPin, Plus, ChevronDown, Utensils, Bell, Flag, Check, Search, Trash2, AlertTriangle, Loader2, Star } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
 import { CuisinePreferencesEditor, CuisinePreferences } from "./CuisinePreferences";
@@ -58,6 +58,8 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [preferencesDialogOpen, setPreferencesDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const prevCampusesRef = useRef<typeof searchedCampuses>(undefined);
   const deleteAccount = useMutation(api.users.deleteAccount);
   const cuisinePreferences = useQuery(api.users.getCuisinePreferences, isAuthenticated ? {} : "skip");
   const setCuisinePreferences = useMutation(api.users.setCuisinePreferences);
@@ -97,6 +99,23 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
       });
     }
   }, [clerkUser, isLoaded, getOrCreate]);
+
+  // Anti-flashing: track when search is in progress
+  useEffect(() => {
+    if (campusSearchTerm) {
+      setIsSearching(true);
+    }
+  }, [campusSearchTerm]);
+
+  // Anti-flashing: preserve previous results and clear searching state
+  useEffect(() => {
+    if (searchedCampuses !== undefined) {
+      setIsSearching(false);
+      prevCampusesRef.current = searchedCampuses;
+    }
+  }, [searchedCampuses]);
+
+  const displayCampuses = searchedCampuses ?? prevCampusesRef.current;
 
   const handleCampusChange = async (campusId: Id<"campuses">) => {
     await setCampus({ campusId });
@@ -184,21 +203,23 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
                 </div>
                 <CommandList className="max-h-[300px]">
                   <CommandEmpty className="py-6 text-center">
-                    {campusSearchTerm ? (
-                      <div className="text-sm text-muted-foreground">
-                        No universities found for &quot;{campusSearchTerm}&quot;
-                      </div>
-                    ) : (
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">Search 380+ universities</p>
-                        <p className="text-xs text-muted-foreground">
-                          Start typing to find your school
-                        </p>
-                      </div>
+                    {!isSearching && (
+                      campusSearchTerm ? (
+                        <div className="text-sm text-muted-foreground">
+                          No universities found for &quot;{campusSearchTerm}&quot;
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">Search 380+ universities</p>
+                          <p className="text-xs text-muted-foreground">
+                            Start typing to find your school
+                          </p>
+                        </div>
+                      )
                     )}
                   </CommandEmpty>
                   <CommandGroup>
-                    {searchedCampuses?.map((campus) => (
+                    {displayCampuses?.map((campus) => (
                       <CommandItem
                         key={campus._id}
                         value={campus.name}
