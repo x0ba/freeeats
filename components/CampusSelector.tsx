@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -13,7 +13,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
-import { MapPin, Search, ArrowRight, ArrowLeft, Utensils, Leaf } from "lucide-react";
+import { MapPin, ArrowRight, ArrowLeft, Utensils, Leaf } from "lucide-react";
 import { CuisinePreferencesEditor, CuisinePreferences } from "./CuisinePreferences";
 import { DietaryRestrictionsSelector, DietaryTag } from "./DietaryRestrictionsSelector";
 import { toast } from "sonner";
@@ -36,9 +36,28 @@ export function CampusSelector({ onCampusSelected }: CampusSelectorProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCampus, setSelectedCampus] = useState<CampusInfo | null>(null);
   const [savedPreferences, setSavedPreferences] = useState<CuisinePreferences | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const prevCampusesRef = useRef<CampusInfo[] | undefined>(undefined);
 
   const campuses = useQuery(api.campuses.search, { searchTerm });
   const completeOnboarding = useMutation(api.users.completeOnboarding);
+
+  // Track when search is in progress
+  useEffect(() => {
+    if (searchTerm) {
+      setIsSearching(true);
+    }
+  }, [searchTerm]);
+
+  useEffect(() => {
+    if (campuses !== undefined) {
+      setIsSearching(false);
+      prevCampusesRef.current = campuses;
+    }
+  }, [campuses]);
+
+  // Use previous results during loading to prevent list from disappearing
+  const displayCampuses = campuses ?? prevCampusesRef.current;
 
   const handleSelect = (campus: CampusInfo) => {
     setSelectedCampus(campus);
@@ -216,29 +235,28 @@ export function CampusSelector({ onCampusSelected }: CampusSelectorProps) {
         {/* Search & Select */}
         <div className="overflow-hidden rounded-2xl border border-border/50 bg-card/50 shadow-xl backdrop-blur-sm">
           <Command className="bg-transparent" shouldFilter={false}>
-            <div className="relative border-b border-border/50">
-              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <CommandInput
-                placeholder="Type your university name..."
-                value={searchTerm}
-                onValueChange={setSearchTerm}
-                className="border-0 pl-10 focus:ring-0"
-              />
-            </div>
+            <CommandInput
+              placeholder="Type your university name..."
+              value={searchTerm}
+              onValueChange={setSearchTerm}
+              className="border-0 focus:ring-0"
+            />
             <CommandList className="max-h-[350px]">
               <CommandEmpty className="py-8 text-center">
-                {searchTerm ? (
-                  <div className="text-muted-foreground">
-                    No universities found for &quot;{searchTerm}&quot;
-                  </div>
-                ) : !selectedCampus ? (
-                  <div className="space-y-2">
-                    <p className="font-medium">Search 380+ universities</p>
-                    <p className="text-sm text-muted-foreground">
-                      Start typing to find your school
-                    </p>
-                  </div>
-                ) : null}
+                {!isSearching && (
+                  searchTerm ? (
+                    <div className="text-muted-foreground">
+                      No universities found for &quot;{searchTerm}&quot;
+                    </div>
+                  ) : !selectedCampus ? (
+                    <div className="space-y-2">
+                      <p className="font-medium">Search 380+ universities</p>
+                      <p className="text-sm text-muted-foreground">
+                        Start typing to find your school
+                      </p>
+                    </div>
+                  ) : null
+                )}
               </CommandEmpty>
               <CommandGroup>
                 {/* Show selected campus at top if it exists and no search term */}
@@ -261,7 +279,7 @@ export function CampusSelector({ onCampusSelected }: CampusSelectorProps) {
                     </div>
                   </CommandItem>
                 )}
-                {campuses?.map((campus) => (
+                {displayCampuses?.map((campus) => (
                   <CommandItem
                     key={campus._id}
                     value={campus.name}
