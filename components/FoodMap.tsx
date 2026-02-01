@@ -9,6 +9,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import "leaflet/dist/leaflet.css";
 
 type FoodType = "pizza" | "sandwiches" | "snacks" | "drinks" | "desserts" | "asian" | "mexican" | "other";
+type DietaryTag = "vegetarian" | "vegan" | "halal" | "kosher" | "gluten-free" | "dairy-free" | "nut-free";
 
 interface FoodPost {
   _id: Id<"foodPosts">;
@@ -22,6 +23,7 @@ interface FoodPost {
   expiresAt: number;
   timeRemaining: number;
   creator: { name: string; imageUrl?: string } | null;
+  dietaryTags?: DietaryTag[];
 }
 
 interface FoodMapProps {
@@ -42,6 +44,16 @@ const foodEmojis: Record<FoodType, string> = {
   asian: "🍜",
   mexican: "🌮",
   other: "🍽️",
+};
+
+const dietaryTagConfig: Record<DietaryTag, { icon: string; label: string }> = {
+  vegetarian: { icon: "🥬", label: "Vegetarian" },
+  vegan: { icon: "🌱", label: "Vegan" },
+  halal: { icon: "☪️", label: "Halal" },
+  kosher: { icon: "✡️", label: "Kosher" },
+  "gluten-free": { icon: "🌾", label: "Gluten-Free" },
+  "dairy-free": { icon: "🥛", label: "Dairy-Free" },
+  "nut-free": { icon: "🥜", label: "Nut-Free" },
 };
 
 function createFoodMarker(foodType: FoodType, isExpiringSoon: boolean): DivIcon {
@@ -266,6 +278,21 @@ export function FoodMap({ posts, center, zoom = 15, onMarkerClick, className = "
                     {formatTimeRemaining(post.timeRemaining)}
                   </Badge>
                 </div>
+                {post.dietaryTags && post.dietaryTags.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {post.dietaryTags.map((tag) => (
+                      <Badge
+                        key={tag}
+                        variant="secondary"
+                        className="bg-coral-500/10 text-coral-600 text-xs"
+                        title={dietaryTagConfig[tag].label}
+                      >
+                        <span className="mr-0.5">{dietaryTagConfig[tag].icon}</span>
+                        <span>{dietaryTagConfig[tag].label}</span>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </div>
             </Popup>
           </Marker>

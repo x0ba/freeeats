@@ -13,6 +13,8 @@ import { toast } from "sonner";
 
 type FoodType = "pizza" | "sandwiches" | "snacks" | "drinks" | "desserts" | "asian" | "mexican" | "other";
 
+type DietaryTag = "vegetarian" | "vegan" | "halal" | "kosher" | "gluten-free" | "dairy-free" | "nut-free";
+
 interface FoodPostData {
   _id: Id<"foodPosts">;
   title: string;
@@ -27,6 +29,7 @@ interface FoodPostData {
   _creationTime: number;
   goneReports: number;
   reportedBy: Id<"users">[];
+  dietaryTags?: DietaryTag[];
 }
 
 interface FoodCardProps {
@@ -43,6 +46,16 @@ const foodTypeConfig: Record<FoodType, { icon: typeof Pizza; color: string; labe
   asian: { icon: UtensilsCrossed, color: "bg-red-500/10 text-red-600", label: "Asian" },
   mexican: { icon: Salad, color: "bg-green-500/10 text-green-600", label: "Mexican" },
   other: { icon: UtensilsCrossed, color: "bg-gray-500/10 text-gray-600", label: "Other" },
+};
+
+const dietaryTagConfig: Record<DietaryTag, { icon: string; label: string }> = {
+  vegetarian: { icon: "🥬", label: "Vegetarian" },
+  vegan: { icon: "🌱", label: "Vegan" },
+  halal: { icon: "☪️", label: "Halal" },
+  kosher: { icon: "✡️", label: "Kosher" },
+  "gluten-free": { icon: "🌾", label: "Gluten-Free" },
+  "dairy-free": { icon: "🥛", label: "Dairy-Free" },
+  "nut-free": { icon: "🥜", label: "Nut-Free" },
 };
 
 function formatTimeRemaining(ms: number): string {
@@ -185,6 +198,20 @@ export function FoodCard({ post, onClick }: FoodCardProps) {
           <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
             {post.description}
           </p>
+        )}
+        {post.dietaryTags && post.dietaryTags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {post.dietaryTags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-0.5 rounded-full bg-coral-500/10 px-2 py-0.5 text-xs text-coral-600"
+                title={dietaryTagConfig[tag].label}
+              >
+                <span>{dietaryTagConfig[tag].icon}</span>
+                <span className="hidden sm:inline">{dietaryTagConfig[tag].label}</span>
+              </span>
+            ))}
+          </div>
         )}
         <div className="mt-3 flex items-center gap-1.5 text-sm text-muted-foreground">
           <MapPin className="h-3.5 w-3.5 text-coral-500" />
