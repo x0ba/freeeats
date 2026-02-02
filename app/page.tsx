@@ -11,7 +11,8 @@ import { AddFoodDialog } from "@/components/AddFoodDialog";
 import { Button } from "@/components/ui/button";
 import { SignInButton, SignUpButton } from "@clerk/nextjs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Map, List, Users, Zap, MapPin } from "lucide-react";
+import { Map, List, Users, Zap, MapPin, ClipboardList } from "lucide-react";
+import { MyPostsView } from "@/components/MyPostsView";
 
 // Dynamic import for map to avoid SSR issues with Leaflet
 const FoodMap = dynamic(() => import("@/components/FoodMap").then((mod) => mod.FoodMap), {
@@ -40,7 +41,7 @@ export default function Home() {
 }
 
 function AuthenticatedApp() {
-  const [view, setView] = useState<"map" | "feed">("map");
+  const [view, setView] = useState<"map" | "feed" | "my-posts">("map");
   const [addFoodOpen, setAddFoodOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -53,6 +54,7 @@ function AuthenticatedApp() {
     api.food.listByCampus,
     currentUser?.campusId ? { campusId: currentUser.campusId } : "skip"
   );
+  const myPosts = useQuery(api.food.getMyPosts);
 
   useEffect(() => {
     setIsMounted(true);
@@ -111,6 +113,22 @@ function AuthenticatedApp() {
               </span>
             )}
           </Button>
+          <Button
+            variant={view === "my-posts" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setView("my-posts")}
+            className={`gap-2 rounded-sm ${view === "my-posts" ? "bg-primary text-primary-foreground" : ""}`}
+          >
+            <ClipboardList className="h-4 w-4" />
+            My Posts
+            {myPosts && myPosts.length > 0 && (
+              <span className={`ml-1 rounded-sm px-1.5 py-0.5 text-xs ${
+                view === "my-posts" ? "bg-primary-foreground/20" : "bg-muted"
+              }`}>
+                {myPosts.length}
+              </span>
+            )}
+          </Button>
         </div>
       </div>
 
@@ -127,8 +145,10 @@ function AuthenticatedApp() {
               />
             )}
           </div>
-        ) : (
+        ) : view === "feed" ? (
           <FoodFeed campusId={currentUser!.campusId!} />
+        ) : (
+          <MyPostsView posts={myPosts ?? []} isLoading={myPosts === undefined} />
         )}
       </main>
 

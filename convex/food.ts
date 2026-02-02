@@ -529,7 +529,44 @@ export const getMyPosts = query({
       .withIndex("by_creator", (q) => q.eq("createdBy", user._id))
       .collect();
 
-    return posts.sort((a, b) => b._creationTime - a._creationTime);
+    const now = Date.now();
+    const postReviewStats = new Map<string, { avg: number; count: number }>();
+
+    for (const post of posts) {
+      const reviews = await ctx.db
+        .query("reviews")
+        .withIndex("by_food_post", (q) => q.eq("foodPostId", post._id))
+        .collect();
+
+      if (reviews.length > 0) {
+        const avg = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+        postReviewStats.set(post._id, { avg, count: reviews.length });
+      } else {
+        postReviewStats.set(post._id, { avg: 0, count: 0 });
+      }
+    }
+
+    const enrichedPosts = await Promise.all(
+      posts.map(async (post) => {
+        const imageUrl = post.imageId
+          ? await ctx.storage.getUrl(post.imageId)
+          : null;
+        const stats = postReviewStats.get(post._id) ?? { avg: 0, count: 0 };
+
+        return {
+          ...post,
+          creator: { name: user.name ?? "You", imageUrl: user.imageUrl },
+          imageUrl,
+          timeRemaining: post.expiresAt - now,
+          goneReports: post.goneReports ?? 0,
+          reportedBy: post.reportedBy ?? [],
+          averageRating: Math.round(stats.avg * 10) / 10,
+          reviewCount: stats.count,
+        };
+      })
+    );
+
+    return enrichedPosts.sort((a, b) => b._creationTime - a._creationTime);
   },
 });
 
