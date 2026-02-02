@@ -93,7 +93,6 @@ export function Header({ onAddFood, isAuthenticated }: HeaderProps) {
   useEffect(() => {
     if (clerkUser && isLoaded) {
       void getOrCreate({
-        clerkId: clerkUser.id,
         name: clerkUser.fullName ?? clerkUser.firstName ?? "Anonymous",
         email: clerkUser.primaryEmailAddress?.emailAddress,
         imageUrl: clerkUser.imageUrl,

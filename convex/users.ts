@@ -4,15 +4,17 @@ import { query, mutation } from "./_generated/server";
 // Get or create a user profile from Clerk data
 export const getOrCreate = mutation({
   args: {
-    clerkId: v.string(),
     name: v.string(),
     email: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
+
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
       .first();
 
     if (existing) {
@@ -33,7 +35,7 @@ export const getOrCreate = mutation({
 
     // Create new user
     return await ctx.db.insert("users", {
-      clerkId: args.clerkId,
+      clerkId: identity.subject,
       name: args.name,
       email: args.email,
       imageUrl: args.imageUrl,
